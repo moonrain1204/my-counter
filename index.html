@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.2</title>
+    <title>專業計數器 v1.3</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -12,7 +12,7 @@
             font-family: sans-serif; user-select: none; touch-action: none;
         }
 
-        /* 顯示層：只負責顯示數字，不接收任何點擊 */
+        /* 顯示層 */
         #display-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; justify-content: center; align-items: center;
@@ -24,7 +24,7 @@
             transition: transform 0.1s ease-out;
         }
 
-        /* 控制層：一個透明的大按鈕，覆蓋全螢幕 */
+        /* 控制層 */
         #control-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 10; cursor: pointer;
@@ -42,7 +42,7 @@
     <div id="control-layer"></div>
     
     <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v1.2</div>
+    <div class="ui-text version">v1.3 防刷新版</div>
 
     <script>
         let count = 0;
@@ -58,10 +58,18 @@
         const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
 
-        // 使用最基礎的事件監聽
+        // --- 新增：防止重新整理邏輯 ---
+        window.addEventListener('beforeunload', (e) => {
+            // 當計數大於 0 時，才觸發保護視窗
+            if (count > 0) {
+                e.preventDefault();
+                e.returnValue = ''; // 根據現代瀏覽器規範，必須設置此值才能顯示提示
+            }
+        });
+
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            startTime = Date.now(); // 記錄按下時間
+            startTime = Date.now();
 
             if (e.touches.length === 1) {
                 isPinching = false;
@@ -92,14 +100,11 @@
 
         control.addEventListener('touchend', (e) => {
             const duration = Date.now() - startTime;
-
-            // 核心判定：如果不是在縮放，且按下時間小於 500 毫秒，就一定是點擊
             if (!isPinching && duration < 500) {
                 count++;
                 counter.innerText = count;
                 if (navigator.vibrate) navigator.vibrate(15);
             }
-            
             stopHolding();
             setTimeout(() => { isPinching = false; }, 200);
         });
@@ -110,7 +115,7 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    if (confirm("確定要歸零嗎？")) {
+                    if (confirm("v1.3：確定要將數字歸零嗎？")) {
                         count = 0;
                         counter.innerText = count;
                         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -129,3 +134,4 @@
     </script>
 </body>
 </html>
+            clearTimeout(holdTi
