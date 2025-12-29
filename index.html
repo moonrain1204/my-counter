@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v0.2</title>
+    <title>專業計數器 v0.3</title>
     <style>
         body, html {
             margin: 0;
@@ -14,43 +14,36 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* 底色改為米黃色 */
             background-color: #F5F5DC; 
-            /* 預設字體顏色 */
             color: #333;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: sans-serif;
             user-select: none;
             touch-action: none;
         }
 
         #counter {
-            /* 數字改為深藍色 */
             color: #00008B; 
-            font-size: 18rem;
+            font-size: 15rem;
             font-weight: bold;
-            transition: transform 0.05s;
         }
 
-        /* 底部提示字 */
         .hint {
             position: absolute;
-            bottom: 40px;
+            bottom: 45px;
             text-align: center;
-            color: #8b8b7a; /* 配合背景的暗米色 */
-            font-size: 0.9rem;
+            color: #8b8b7a;
+            font-size: 0.8rem;
+            line-height: 1.5;
         }
 
-        /* 左下角版本號 */
         .version {
             position: absolute;
             bottom: 10px;
             left: 10px;
-            color: #bcbcad; /* 極淺灰色，避免干擾視覺 */
+            color: #bcbcad;
             font-size: 0.7rem;
-            font-family: monospace;
         }
 
-        /* 歸零進度條 (改為藍色系以配合數字) */
         #progress-bar {
             position: absolute;
             top: 0;
@@ -58,16 +51,7 @@
             height: 6px;
             background-color: #4169E1;
             width: 0%;
-        }
-
-        .click-effect {
-            animation: pulse 0.1s ease-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.92); }
-            100% { transform: scale(1); }
+            z-index: 100;
         }
     </style>
 </head>
@@ -76,70 +60,78 @@
     <div id="progress-bar"></div>
     <div id="counter">0</div>
     
-    <div class="hint">觸控全螢幕 +1<br>長按音量鍵 5 秒歸零</div>
-    <div class="version">v0.2</div>
+    <div class="hint">單擊螢幕 +1<br>長按音量鍵或螢幕中央 3秒 歸零</div>
+    <div class="version">v0.3</div>
 
     <script>
         let count = 0;
-        let timer = null;
+        let holdTimer = null;
         let isHolding = false;
         const counterDisplay = document.getElementById('counter');
         const progressBar = document.getElementById('progress-bar');
 
-        // 1. 全螢幕點擊增加
-        window.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        // --- 核心逻辑：啟動歸零倒數 ---
+        function startHolding() {
             if (isHolding) return;
-            count++;
-            updateUI();
-        }, { passive: false });
+            isHolding = true;
+            
+            progressBar.style.transition = "width 3s linear"; // 改為 3 秒更直覺
+            progressBar.style.width = "100%";
 
-        // 2. 監聽音量鍵長按開始
-        window.addEventListener('keydown', (e) => {
-            if (e.key === "VolumeUp" || e.key === "VolumeDown") {
-                e.preventDefault();
-                if (isHolding) return;
-                
-                isHolding = true;
-                progressBar.style.transition = "width 5s linear";
-                progressBar.style.width = "100%";
+            holdTimer = setTimeout(() => {
+                resetCounter();
+                stopHolding();
+            }, 3000);
+        }
 
-                timer = setTimeout(() => {
-                    resetCounter();
-                    clearHolding();
-                }, 5000);
-            }
-        });
-
-        // 3. 監聽音量鍵放開 (中斷歸零)
-        window.addEventListener('keyup', (e) => {
-            if (e.key === "VolumeUp" || e.key === "VolumeDown") {
-                clearHolding();
-            }
-        });
-
-        function clearHolding() {
+        function stopHolding() {
             isHolding = false;
-            clearTimeout(timer);
+            clearTimeout(holdTimer);
             progressBar.style.transition = "none";
             progressBar.style.width = "0%";
         }
 
-        function updateUI() {
-            counterDisplay.innerText = count;
-            if (navigator.vibrate) navigator.vibrate(15);
-            
-            counterDisplay.classList.remove('click-effect');
-            void counterDisplay.offsetWidth; 
-            counterDisplay.classList.add('click-effect');
+        function resetCounter() {
+            if (confirm("v0.3：確定要歸零嗎？")) {
+                count = 0;
+                counterDisplay.innerText = count;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            }
         }
 
-        function resetCounter() {
-            count = 0;
-            counterDisplay.innerText = count;
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            alert("計數已重置 (v0.2)");
-        }
+        // --- 監聽方式 1：螢幕觸控 ---
+        window.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            // 開始長按計時
+            startHolding();
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            // 如果按住時間不夠長就放開，則執行 +1
+            if (isHolding) {
+                const timeHeld = parseFloat(getComputedStyle(progressBar).width);
+                if (timeHeld < window.innerWidth * 0.9) { // 未滿 90% 進度
+                    count++;
+                    counterDisplay.innerText = count;
+                    if (navigator.vibrate) navigator.vibrate(15);
+                }
+            }
+            stopHolding();
+        });
+
+        // --- 監聽方式 2：音量鍵 (Android 相容性增強) ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
+                e.preventDefault();
+                startHolding();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
+                stopHolding();
+            }
+        });
     </script>
 </body>
 </html>
