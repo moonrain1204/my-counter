@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v0.4</title>
+    <title>專業計數器 v0.7</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -12,10 +12,20 @@
             color: #333; font-family: sans-serif;
             user-select: none; touch-action: none;
         }
-        #counter { color: #00008B; font-size: 15rem; font-weight: bold; z-index: 10; }
+        #counter-container {
+            display: flex; justify-content: center; align-items: center;
+            touch-action: none;
+        }
+        #counter { 
+            color: #00008B; 
+            font-size: 15rem; /* 初始大小 */
+            font-weight: bold; 
+            pointer-events: none; /* 讓點擊穿透到 container 或 window */
+        }
         .hint {
             position: absolute; bottom: 45px; text-align: center;
             color: #8b8b7a; font-size: 0.8rem; line-height: 1.5;
+            pointer-events: none;
         }
         .version { position: absolute; bottom: 10px; left: 10px; color: #bcbcad; font-size: 0.7rem; }
         #progress-bar {
@@ -26,31 +36,91 @@
 </head>
 <body>
     <div id="progress-bar"></div>
-    <div id="counter">0</div>
-    <div class="hint">單擊螢幕 +1<br>長按音量鍵或螢幕 3秒 歸零</div>
-    <div class="version">v0.4</div>
+    <div id="counter-container">
+        <div id="counter">0</div>
+    </div>
+    
+    <div class="hint">單指點擊 +1<br>雙指縮放數字大小<br>長按螢幕 3秒 歸零</div>
+    <div class="version">v0.7</div>
 
     <script>
         let count = 0;
+        let currentScale = 1;
+        let startScale = 1;
+        let initialDist = 0;
         let holdTimer = null;
         let isHolding = false;
-        const counterDisplay = document.getElementById('counter');
+        
+        const counter = document.getElementById('counter');
+        const container = document.getElementById('counter-container');
         const progressBar = document.getElementById('progress-bar');
 
+        // --- 處理觸碰開始 ---
+        window.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            
+            if (e.touches.length === 1) {
+                // 單指：啟動歸零長按計時
+                startHolding();
+            } else if (e.touches.length === 2) {
+                // 雙指：取消歸零計時，準備縮放
+                stopHolding();
+                initialDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                startScale = currentScale;
+            }
+        }, { passive: false });
+
+        // --- 處理移動 (僅雙指縮放) ---
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const currentDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                
+                // 計算新倍率並套用
+                currentScale = startScale * (currentDist / initialDist);
+                // 限制最小縮放倍率，避免數字消失
+                if (currentScale < 0.2) currentScale = 0.2;
+                container.style.transform = `scale(${currentScale})`;
+            }
+        }, { passive: false });
+
+        // --- 處理觸碰結束 ---
+        window.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                // 如果是極短暫的單指點擊（進度條沒跑多少），則 +1
+                if (isHolding) {
+                    const progressWidth = parseFloat(progressBar.style.width) || 0;
+                    if (progressWidth < 20) { // 進度不到 20% 視為點擊
+                        count++;
+                        counter.innerText = count;
+                        if (navigator.vibrate) navigator.vibrate(15);
+                    }
+                }
+                stopHolding();
+            }
+        });
+
+        // --- 歸零邏輯 ---
         function startHolding() {
             if (isHolding) return;
             isHolding = true;
-            
-            // 觸覺回饋：開始長按時震動一下，表示偵測成功
-            if (navigator.vibrate) navigator.vibrate(30);
-
             progressBar.style.transition = "width 3s linear";
             progressBar.style.width = "100%";
 
             holdTimer = setTimeout(() => {
-                resetCounter();
+                if (confirm("v0.7：確定要將計數歸零嗎？")) {
+                    count = 0;
+                    counter.innerText = count;
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                }
                 stopHolding();
-            }, 3000); // 縮短為 3 秒，提升體驗
+            }, 3000);
         }
 
         function stopHolding() {
@@ -59,53 +129,6 @@
             progressBar.style.transition = "none";
             progressBar.style.width = "0%";
         }
-
-        function resetCounter() {
-            if (confirm("v0.4：確定要重設計數嗎？")) {
-                count = 0;
-                counterDisplay.innerText = count;
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            }
-        }
-
-        // 監聽螢幕觸控
-        window.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startHolding();
-        }, { passive: false });
-
-        window.addEventListener('touchend', (e) => {
-            if (isHolding) {
-                const currentWidth = progressBar.offsetWidth;
-                const maxWidth = window.innerWidth;
-                if (currentWidth < maxWidth * 0.9) { 
-                    count++;
-                    counterDisplay.innerText = count;
-                    if (navigator.vibrate) navigator.vibrate(15);
-                }
-            }
-            stopHolding();
-        });
-
-        // 強化音量鍵監聽
-        const handleKeyDown = (e) => {
-            if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
-                e.preventDefault();
-                e.stopPropagation(); // 阻止事件向上傳遞
-                startHolding();
-            }
-        };
-
-        const handleKeyUp = (e) => {
-            if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
-                stopHolding();
-            }
-        };
-
-        // 在 window 與 document 同時監聽
-        window.addEventListener('keydown', handleKeyDown, true);
-        window.addEventListener('keyup', handleKeyUp, true);
-        document.addEventListener('keydown', handleKeyDown, true);
     </script>
 </body>
 </html>
