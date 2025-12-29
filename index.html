@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.6</title>
+    <title>專業計數器 v1.7</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -16,14 +16,8 @@
             display: flex; justify-content: center; align-items: center;
             pointer-events: none; z-index: 1;
         }
-        #counter { 
-            color: #00008B; font-size: 100px; font-weight: bold;
-            transition: transform 0.1s ease-out;
-        }
-        #control-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; cursor: pointer;
-        }
+        #counter { color: #00008B; font-size: 100px; font-weight: bold; transition: transform 0.1s ease-out; }
+        #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
         .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; text-align: left; }
@@ -34,9 +28,8 @@
     <div id="progress-bar"></div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    
     <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v1.6 彈窗震動警告版</div>
+    <div class="ui-text version">v1.7 Samsung 震動優化版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -53,6 +46,15 @@
         const progressBar = document.getElementById('progress-bar');
 
         counter.innerText = count;
+
+        // 封裝震動函式，增加相容性判定
+        function doVibrate(pattern) {
+            if (window.navigator && window.navigator.vibrate) {
+                // 某些手機需要先停止當前震動再開啟新的
+                window.navigator.vibrate(0);
+                window.navigator.vibrate(pattern);
+            }
+        }
 
         window.addEventListener('beforeunload', (e) => {
             if (count > 0) { e.preventDefault(); e.returnValue = ''; }
@@ -86,7 +88,7 @@
             if (!isPinching && duration < 500) {
                 count++;
                 updateDisplay();
-                if (navigator.vibrate) navigator.vibrate(20);
+                doVibrate(30); // 稍微加長點擊震動
             }
             stopHolding();
             setTimeout(() => { isPinching = false; }, 200);
@@ -103,15 +105,14 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    // --- v1.6 新增：彈出視窗前先震動提醒 ---
-                    if (navigator.vibrate) navigator.vibrate(150); 
+                    // 彈窗瞬間震動警告 (加強至 200ms)
+                    doVibrate(200); 
                     
-                    // 彈出視窗
                     if (confirm("確定要將計數器歸零嗎？")) {
                         count = 0;
                         updateDisplay();
-                        // 歸零成功的確認震動 (長-短-長)
-                        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+                        // 歸零成功 (長-短-長)
+                        doVibrate([400, 150, 400]);
                     }
                 }
                 stopHolding();
@@ -120,10 +121,7 @@
 
         function stopHolding() {
             isHolding = false;
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
-            }
+            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
             progressBar.style.transition = "none";
             progressBar.style.width = "0%";
         }
