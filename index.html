@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v0.8</title>
+    <title>專業計數器 v0.9</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -11,19 +11,19 @@
             align-items: center; background-color: #F5F5DC; 
             color: #333; font-family: sans-serif;
             user-select: none; touch-action: none;
+            /* 讓整個背景都能接收點擊 */
+            cursor: pointer;
         }
-        /* 容器層：處理縮放 */
         #counter-container {
             display: flex; justify-content: center; align-items: center;
-            pointer-events: none; /* 關鍵：讓容器不干擾點擊 */
-            transition: transform 0.05s ease-out;
-            z-index: 5;
+            /* 關鍵：讓縮放的數字完全不干擾觸控 */
+            pointer-events: none; 
+            z-index: 1;
         }
         #counter { 
             color: #00008B; 
-            font-size: 10rem; /* 降低初始大小 */
+            font-size: 8rem; /* 初始適中大小 */
             font-weight: bold; 
-            pointer-events: none; /* 關鍵：讓數字不干擾點擊 */
         }
         .hint {
             position: absolute; bottom: 45px; text-align: center;
@@ -35,22 +35,16 @@
             position: absolute; top: 0; left: 0; height: 6px;
             background-color: #4169E1; width: 0%; z-index: 100;
         }
-        /* 增加一個專門透明層來接收所有點擊 */
-        #touch-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 20;
-        }
     </style>
 </head>
 <body>
     <div id="progress-bar"></div>
-    <div id="touch-layer"></div>
     <div id="counter-container">
         <div id="counter">0</div>
     </div>
     
-    <div class="hint">單指點擊 +1<br>雙指縮放數字大小<br>長按螢幕 3秒 歸零</div>
-    <div class="version">v0.8</div>
+    <div class="hint">點擊螢幕任何處 +1<br>雙指縮放數字大小<br>長按 3秒 歸零</div>
+    <div class="version">v0.9</div>
 
     <script>
         let count = 0;
@@ -59,23 +53,23 @@
         let initialDist = 0;
         let holdTimer = null;
         let isHolding = false;
-        let hasMoved = false; // 判斷是否為縮放手勢
+        let pinchMode = false; // 紀錄是否正在縮放中
         
         const counter = document.getElementById('counter');
         const container = document.getElementById('counter-container');
         const progressBar = document.getElementById('progress-bar');
-        const touchLayer = document.getElementById('touch-layer');
 
-        // --- 核心邏輯：統一在 touch-layer 接收事件 ---
-        touchLayer.addEventListener('touchstart', (e) => {
+        // --- 核心邏輯：直接在 window 監聽所有觸碰 ---
+        window.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            hasMoved = false;
             
             if (e.touches.length === 1) {
-                // 單指：啟動歸零長按計時
+                // 單指：準備計數與長按歸零
+                pinchMode = false;
                 startHolding();
             } else if (e.touches.length === 2) {
-                // 雙指：取消歸零計時，準備縮放
+                // 雙指：進入縮放模式，取消歸零計時
+                pinchMode = true;
                 stopHolding();
                 initialDist = Math.hypot(
                     e.touches[0].pageX - e.touches[1].pageX,
@@ -85,10 +79,9 @@
             }
         }, { passive: false });
 
-        touchLayer.addEventListener('touchmove', (e) => {
+        window.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
                 e.preventDefault();
-                hasMoved = true;
                 const currentDist = Math.hypot(
                     e.touches[0].pageX - e.touches[1].pageX,
                     e.touches[0].pageY - e.touches[1].pageY
@@ -96,27 +89,27 @@
                 
                 currentScale = startScale * (currentDist / initialDist);
                 
-                // 限制縮放範圍：不消失也不要爆框
-                if (currentScale < 0.3) currentScale = 0.3;
-                if (currentScale > 3.0) currentScale = 3.0;
+                // 限制縮放範圍，避免大到爆開或小到看不見
+                if (currentScale < 0.2) currentScale = 0.2;
+                if (currentScale > 4.0) currentScale = 4.0;
                 
                 container.style.transform = `scale(${currentScale})`;
             }
         }, { passive: false });
 
-        touchLayer.addEventListener('touchend', (e) => {
+        window.addEventListener('touchend', (e) => {
             if (e.touches.length === 0) {
-                // 檢查是否為普通點擊
+                // 如果不是在縮放模式，且長按時間很短，則判定為點擊
                 const progressWidth = parseFloat(progressBar.style.width) || 0;
                 
-                // 如果沒在縮放(hasMoved為false)且長按進度極短，則視為點擊
-                if (!hasMoved && progressWidth < 15) {
+                if (!pinchMode && progressWidth < 15) {
                     count++;
                     counter.innerText = count;
                     if (navigator.vibrate) navigator.vibrate(15);
                 }
                 
                 stopHolding();
+                pinchMode = false;
             }
         });
 
@@ -127,7 +120,7 @@
             progressBar.style.width = "100%";
 
             holdTimer = setTimeout(() => {
-                if (confirm("v0.8：確定要將計數歸零嗎？")) {
+                if (confirm("v0.9：確定要歸零嗎？")) {
                     count = 0;
                     counter.innerText = count;
                     if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
