@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.3</title>
+    <title>專業計數器 v1.4</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -11,25 +11,19 @@
             overflow: hidden; background-color: #F5F5DC; 
             font-family: sans-serif; user-select: none; touch-action: none;
         }
-
-        /* 顯示層 */
         #display-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; justify-content: center; align-items: center;
             pointer-events: none; z-index: 1;
         }
-
         #counter { 
             color: #00008B; font-size: 100px; font-weight: bold;
             transition: transform 0.1s ease-out;
         }
-
-        /* 控制層 */
         #control-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 10; cursor: pointer;
         }
-
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
         .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; text-align: left; }
@@ -42,10 +36,11 @@
     <div id="control-layer"></div>
     
     <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v1.3 防刷新版</div>
+    <div class="ui-text version">v1.4 穩定修正版</div>
 
     <script>
-        let count = 0;
+        // 優先從手機讀取舊資料
+        let count = parseInt(localStorage.getItem('myCounter')) || 0;
         let currentScale = 1;
         let startScale = 1;
         let initialDist = 0;
@@ -58,42 +53,32 @@
         const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
 
-        // --- 新增：防止重新整理邏輯 ---
+        // 初始化顯示
+        counter.innerText = count;
+
         window.addEventListener('beforeunload', (e) => {
-            // 當計數大於 0 時，才觸發保護視窗
-            if (count > 0) {
-                e.preventDefault();
-                e.returnValue = ''; // 根據現代瀏覽器規範，必須設置此值才能顯示提示
-            }
+            if (count > 0) { e.preventDefault(); e.returnValue = ''; }
         });
 
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startTime = Date.now();
-
             if (e.touches.length === 1) {
                 isPinching = false;
                 startHolding();
             } else if (e.touches.length === 2) {
                 isPinching = true;
                 stopHolding();
-                initialDist = Math.hypot(
-                    e.touches[0].pageX - e.touches[1].pageX,
-                    e.touches[0].pageY - e.touches[1].pageY
-                );
+                initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 startScale = currentScale;
             }
         }, { passive: false });
 
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
-                const currentDist = Math.hypot(
-                    e.touches[0].pageX - e.touches[1].pageX,
-                    e.touches[0].pageY - e.touches[1].pageY
-                );
+                const currentDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 currentScale = startScale * (currentDist / initialDist);
-                if (currentScale < 0.2) currentScale = 0.2;
-                if (currentScale > 8) currentScale = 8;
+                currentScale = Math.min(Math.max(currentScale, 0.2), 8);
                 counter.style.transform = `scale(${currentScale})`;
             }
         });
@@ -102,12 +87,17 @@
             const duration = Date.now() - startTime;
             if (!isPinching && duration < 500) {
                 count++;
-                counter.innerText = count;
+                updateDisplay();
                 if (navigator.vibrate) navigator.vibrate(15);
             }
             stopHolding();
             setTimeout(() => { isPinching = false; }, 200);
         });
+
+        function updateDisplay() {
+            counter.innerText = count;
+            localStorage.setItem('myCounter', count); // 儲存到手機
+        }
 
         function startHolding() {
             isHolding = true;
@@ -115,9 +105,9 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    if (confirm("v1.3：確定要將數字歸零嗎？")) {
+                    if (confirm("確定要歸零嗎？")) {
                         count = 0;
-                        counter.innerText = count;
+                        updateDisplay();
                         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                     }
                 }
@@ -127,11 +117,10 @@
 
         function stopHolding() {
             isHolding = false;
-            clearTimeout(holdTimer);
+            if (holdTimer) clearTimeout(holdTimer);
             progressBar.style.transition = "none";
             progressBar.style.width = "0%";
         }
     </script>
 </body>
 </html>
-            clearTimeout(holdTi
