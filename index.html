@@ -3,66 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.1</title>
+    <title>專業計數器 v1.2</title>
     <style>
-        /* 移除所有複雜層級，回歸最基礎佈局 */
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; 
-            background-color: #F5F5DC; 
-            font-family: sans-serif;
-            user-select: none; touch-action: none;
+            overflow: hidden; background-color: #F5F5DC; 
+            font-family: sans-serif; user-select: none; touch-action: none;
         }
 
-        /* 使用簡單的 flex 確保數字一定在正中央 */
-        #main-stage {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
+        /* 顯示層：只負責顯示數字，不接收任何點擊 */
+        #display-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 1;
         }
 
         #counter { 
-            color: #00008B; 
-            font-size: 120px; /* 使用像素單位避免縮放錯誤 */
-            font-weight: bold;
+            color: #00008B; font-size: 100px; font-weight: bold;
             transition: transform 0.1s ease-out;
-            pointer-events: none; /* 讓點擊穿透到 stage */
         }
 
-        /* 提示字與版本號 */
-        .ui-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
+        /* 控制層：一個透明的大按鈕，覆蓋全螢幕 */
+        #control-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; cursor: pointer;
         }
-        .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; line-height: 1.5; }
+
+        .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
+        .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
         .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; text-align: left; }
-
-        /* 進度條 */
-        #progress-bar {
-            position: absolute; top: 0; left: 0; height: 6px;
-            background-color: #4169E1; width: 0%; z-index: 100;
-        }
+        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: #4169E1; width: 0%; z-index: 100; }
     </style>
 </head>
 <body>
     <div id="progress-bar"></div>
+    <div id="display-layer"><div id="counter">0</div></div>
+    <div id="control-layer"></div>
     
-    <div id="main-stage">
-        <div id="counter">0</div>
-        
-        <div class="ui-text hint">點擊螢幕 +1<br>雙指縮放數字大小<br>長按 3秒 歸零</div>
-        <div class="ui-text version">v1.1</div>
-    </div>
+    <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
+    <div class="ui-text version">v1.2</div>
 
     <script>
         let count = 0;
@@ -72,13 +52,17 @@
         let holdTimer = null;
         let isHolding = false;
         let isPinching = false;
-        
+        let startTime = 0;
+
         const counter = document.getElementById('counter');
-        const stage = document.getElementById('main-stage');
+        const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
 
-        // --- 核心邏輯：直接監聽整個舞台 ---
-        stage.addEventListener('touchstart', (e) => {
+        // 使用最基礎的事件監聽
+        control.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startTime = Date.now(); // 記錄按下時間
+
             if (e.touches.length === 1) {
                 isPinching = false;
                 startHolding();
@@ -93,32 +77,31 @@
             }
         }, { passive: false });
 
-        stage.addEventListener('touchmove', (e) => {
+        control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
                 const currentDist = Math.hypot(
                     e.touches[0].pageX - e.touches[1].pageX,
                     e.touches[0].pageY - e.touches[1].pageY
                 );
                 currentScale = startScale * (currentDist / initialDist);
-                // 限制範圍
-                if (currentScale < 0.3) currentScale = 0.3;
-                if (currentScale > 6) currentScale = 6;
+                if (currentScale < 0.2) currentScale = 0.2;
+                if (currentScale > 8) currentScale = 8;
                 counter.style.transform = `scale(${currentScale})`;
             }
         });
 
-        stage.addEventListener('touchend', (e) => {
-            // 如果進度條跑不到 10% 且不是在縮放，則判定為點擊
-            const progress = parseFloat(progressBar.style.width) || 0;
-            if (!isPinching && progress < 10) {
+        control.addEventListener('touchend', (e) => {
+            const duration = Date.now() - startTime;
+
+            // 核心判定：如果不是在縮放，且按下時間小於 500 毫秒，就一定是點擊
+            if (!isPinching && duration < 500) {
                 count++;
                 counter.innerText = count;
                 if (navigator.vibrate) navigator.vibrate(15);
             }
             
             stopHolding();
-            // 延遲結束縮放狀態
-            setTimeout(() => { isPinching = false; }, 100);
+            setTimeout(() => { isPinching = false; }, 200);
         });
 
         function startHolding() {
@@ -127,7 +110,7 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    if (confirm("v1.1：確定要歸零嗎？")) {
+                    if (confirm("確定要歸零嗎？")) {
                         count = 0;
                         counter.innerText = count;
                         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
