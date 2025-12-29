@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.4</title>
+    <title>專業計數器 v1.6</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -36,10 +36,9 @@
     <div id="control-layer"></div>
     
     <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v1.4 穩定修正版</div>
+    <div class="ui-text version">v1.6 彈窗震動警告版</div>
 
     <script>
-        // 優先從手機讀取舊資料
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
         let currentScale = 1;
         let startScale = 1;
@@ -53,7 +52,6 @@
         const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
 
-        // 初始化顯示
         counter.innerText = count;
 
         window.addEventListener('beforeunload', (e) => {
@@ -88,7 +86,7 @@
             if (!isPinching && duration < 500) {
                 count++;
                 updateDisplay();
-                if (navigator.vibrate) navigator.vibrate(15);
+                if (navigator.vibrate) navigator.vibrate(20);
             }
             stopHolding();
             setTimeout(() => { isPinching = false; }, 200);
@@ -96,7 +94,7 @@
 
         function updateDisplay() {
             counter.innerText = count;
-            localStorage.setItem('myCounter', count); // 儲存到手機
+            localStorage.setItem('myCounter', count);
         }
 
         function startHolding() {
@@ -105,10 +103,15 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    if (confirm("確定要歸零嗎？")) {
+                    // --- v1.6 新增：彈出視窗前先震動提醒 ---
+                    if (navigator.vibrate) navigator.vibrate(150); 
+                    
+                    // 彈出視窗
+                    if (confirm("確定要將計數器歸零嗎？")) {
                         count = 0;
                         updateDisplay();
-                        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                        // 歸零成功的確認震動 (長-短-長)
+                        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
                     }
                 }
                 stopHolding();
@@ -117,7 +120,10 @@
 
         function stopHolding() {
             isHolding = false;
-            if (holdTimer) clearTimeout(holdTimer);
+            if (holdTimer) {
+                clearTimeout(holdTimer);
+                holdTimer = null;
+            }
             progressBar.style.transition = "none";
             progressBar.style.width = "0%";
         }
