@@ -3,65 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v0.3</title>
+    <title>專業計數器 v0.4</title>
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #F5F5DC; 
-            color: #333;
-            font-family: sans-serif;
-            user-select: none;
-            touch-action: none;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; display: flex; justify-content: center;
+            align-items: center; background-color: #F5F5DC; 
+            color: #333; font-family: sans-serif;
+            user-select: none; touch-action: none;
         }
-
-        #counter {
-            color: #00008B; 
-            font-size: 15rem;
-            font-weight: bold;
-        }
-
+        #counter { color: #00008B; font-size: 15rem; font-weight: bold; z-index: 10; }
         .hint {
-            position: absolute;
-            bottom: 45px;
-            text-align: center;
-            color: #8b8b7a;
-            font-size: 0.8rem;
-            line-height: 1.5;
+            position: absolute; bottom: 45px; text-align: center;
+            color: #8b8b7a; font-size: 0.8rem; line-height: 1.5;
         }
-
-        .version {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: #bcbcad;
-            font-size: 0.7rem;
-        }
-
+        .version { position: absolute; bottom: 10px; left: 10px; color: #bcbcad; font-size: 0.7rem; }
         #progress-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 6px;
-            background-color: #4169E1;
-            width: 0%;
-            z-index: 100;
+            position: absolute; top: 0; left: 0; height: 6px;
+            background-color: #4169E1; width: 0%; z-index: 100;
         }
     </style>
 </head>
 <body>
-
     <div id="progress-bar"></div>
     <div id="counter">0</div>
-    
-    <div class="hint">單擊螢幕 +1<br>長按音量鍵或螢幕中央 3秒 歸零</div>
-    <div class="version">v0.3</div>
+    <div class="hint">單擊螢幕 +1<br>長按音量鍵或螢幕 3秒 歸零</div>
+    <div class="version">v0.4</div>
 
     <script>
         let count = 0;
@@ -70,18 +37,20 @@
         const counterDisplay = document.getElementById('counter');
         const progressBar = document.getElementById('progress-bar');
 
-        // --- 核心逻辑：啟動歸零倒數 ---
         function startHolding() {
             if (isHolding) return;
             isHolding = true;
             
-            progressBar.style.transition = "width 3s linear"; // 改為 3 秒更直覺
+            // 觸覺回饋：開始長按時震動一下，表示偵測成功
+            if (navigator.vibrate) navigator.vibrate(30);
+
+            progressBar.style.transition = "width 3s linear";
             progressBar.style.width = "100%";
 
             holdTimer = setTimeout(() => {
                 resetCounter();
                 stopHolding();
-            }, 3000);
+            }, 3000); // 縮短為 3 秒，提升體驗
         }
 
         function stopHolding() {
@@ -92,25 +61,24 @@
         }
 
         function resetCounter() {
-            if (confirm("v0.3：確定要歸零嗎？")) {
+            if (confirm("v0.4：確定要重設計數嗎？")) {
                 count = 0;
                 counterDisplay.innerText = count;
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             }
         }
 
-        // --- 監聽方式 1：螢幕觸控 ---
+        // 監聽螢幕觸控
         window.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            // 開始長按計時
             startHolding();
         }, { passive: false });
 
         window.addEventListener('touchend', (e) => {
-            // 如果按住時間不夠長就放開，則執行 +1
             if (isHolding) {
-                const timeHeld = parseFloat(getComputedStyle(progressBar).width);
-                if (timeHeld < window.innerWidth * 0.9) { // 未滿 90% 進度
+                const currentWidth = progressBar.offsetWidth;
+                const maxWidth = window.innerWidth;
+                if (currentWidth < maxWidth * 0.9) { 
                     count++;
                     counterDisplay.innerText = count;
                     if (navigator.vibrate) navigator.vibrate(15);
@@ -119,19 +87,25 @@
             stopHolding();
         });
 
-        // --- 監聽方式 2：音量鍵 (Android 相容性增強) ---
-        window.addEventListener('keydown', (e) => {
+        // 強化音量鍵監聽
+        const handleKeyDown = (e) => {
             if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
                 e.preventDefault();
+                e.stopPropagation(); // 阻止事件向上傳遞
                 startHolding();
             }
-        });
+        };
 
-        window.addEventListener('keyup', (e) => {
+        const handleKeyUp = (e) => {
             if (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25) {
                 stopHolding();
             }
-        });
+        };
+
+        // 在 window 與 document 同時監聽
+        window.addEventListener('keydown', handleKeyDown, true);
+        window.addEventListener('keyup', handleKeyUp, true);
+        document.addEventListener('keydown', handleKeyDown, true);
     </script>
 </body>
 </html>
