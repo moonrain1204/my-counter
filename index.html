@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業計數器 v1.7</title>
+    <title>專業計數器 v1.9</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -13,10 +13,21 @@
         }
         #display-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
             pointer-events: none; z-index: 1;
         }
         #counter { color: #00008B; font-size: 100px; font-weight: bold; transition: transform 0.1s ease-out; }
+        
+        /* 歷史紀錄區優化 */
+        #history-log {
+            position: absolute; top: 40px; width: 90%; max-height: 150px;
+            overflow-y: auto; background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px; padding: 12px; font-size: 13px; color: #333;
+            z-index: 5; pointer-events: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .log-item { border-bottom: 1px solid rgba(0,0,0,0.05); padding: 6px 0; display: flex; justify-content: space-between; }
+        .log-milestone { color: #D2691E; font-weight: bold; } /* 1000 倍數的顏色 */
+
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
@@ -26,13 +37,15 @@
 </head>
 <body>
     <div id="progress-bar"></div>
+    <div id="history-log">--- 尚無紀錄 ---</div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    <div class="ui-text hint">單指點擊 +1<br>雙指縮放大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v1.7 Samsung 震動優化版</div>
+    <div class="ui-text hint">達 500/1000 及其倍數自動紀錄<br>長按 3秒 歸零</div>
+    <div class="ui-text version">v1.9 雙重紀錄版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
+        let history = JSON.parse(localStorage.getItem('myHistory')) || [];
         let currentScale = 1;
         let startScale = 1;
         let initialDist = 0;
@@ -44,17 +57,60 @@
         const counter = document.getElementById('counter');
         const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
+        const logDiv = document.getElementById('history-log');
 
-        counter.innerText = count;
-
-        // 封裝震動函式，增加相容性判定
         function doVibrate(pattern) {
             if (window.navigator && window.navigator.vibrate) {
-                // 某些手機需要先停止當前震動再開啟新的
                 window.navigator.vibrate(0);
                 window.navigator.vibrate(pattern);
             }
         }
+
+        function updateDisplay() {
+            counter.innerText = count;
+            localStorage.setItem('myCounter', count);
+            
+            // 邏輯判定：
+            // 1. 每增加 1000 (1000, 2000...)
+            if (count > 0 && count % 1000 === 0) {
+                saveToHistory(true);
+            } 
+            // 2. 達到 500 (500, 1500, 2500... 不包含 1000 的倍數以免重複紀錄)
+            else if (count > 0 && count % 1000 === 500) {
+                saveToHistory(false);
+            }
+        }
+
+        function saveToHistory(isMajor) {
+            const now = new Date();
+            const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+            const type = isMajor ? "★大關卡" : "達標";
+            const record = `<div class="log-item ${isMajor ? 'log-milestone' : ''}"><span>${type}: ${count}</span> <span>${timeStr}</span></div>`;
+            
+            history.unshift(record); // 最新紀錄排在最上面
+            if (history.length > 20) history.pop(); // 保留最近 20 筆紀錄
+            
+            localStorage.setItem('myHistory', JSON.stringify(history));
+            renderHistory();
+            
+            if (isMajor) {
+                doVibrate([500, 100, 500, 100, 500]); // 1000 倍數強烈震動
+            } else {
+                doVibrate([400, 200, 400]); // 500 倍數中度震動
+            }
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                logDiv.innerHTML = "<div style='text-align:center; opacity:0.5;'>--- 尚無達標紀錄 ---</div>";
+                return;
+            }
+            logDiv.innerHTML = history.join('');
+        }
+
+        // 初始化
+        updateDisplay();
+        renderHistory();
 
         window.addEventListener('beforeunload', (e) => {
             if (count > 0) { e.preventDefault(); e.returnValue = ''; }
@@ -88,16 +144,11 @@
             if (!isPinching && duration < 500) {
                 count++;
                 updateDisplay();
-                doVibrate(30); // 稍微加長點擊震動
+                doVibrate(30);
             }
             stopHolding();
             setTimeout(() => { isPinching = false; }, 200);
         });
-
-        function updateDisplay() {
-            counter.innerText = count;
-            localStorage.setItem('myCounter', count);
-        }
 
         function startHolding() {
             isHolding = true;
@@ -105,13 +156,10 @@
             progressBar.style.width = "100%";
             holdTimer = setTimeout(() => {
                 if (isHolding && !isPinching) {
-                    // 彈窗瞬間震動警告 (加強至 200ms)
                     doVibrate(200); 
-                    
-                    if (confirm("確定要將計數器歸零嗎？")) {
+                    if (confirm("確定要將計數器歸零嗎？\n(歷史紀錄將會保留)")) {
                         count = 0;
                         updateDisplay();
-                        // 歸零成功 (長-短-長)
                         doVibrate([400, 150, 400]);
                     }
                 }
