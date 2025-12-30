@@ -3,20 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v3.2</title>
+    <title>九字禪計數器 v3.3</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
+        
+        /* 頂部控制列排版 */
+        #header-controls { position: absolute; top: 15px; width: 100%; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        #sacred-text { color: #8B4513; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-shadow: 1px 1px 1px rgba(255,255,255,0.8); }
+        #log-toggle { padding: 8px 15px; background: rgba(65, 105, 225, 0.8); color: white; border-radius: 20px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px); white-space: nowrap; }
+
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
         #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: none; transition: transform 0.1s ease-out; }
-        #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 18px; background: rgba(65, 105, 225, 0.7); color: white; border-radius: 20px; font-size: 14px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); }
+        
         #log-panel { position: absolute; top: 0; right: -100%; width: 95%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
         .log-item { border-bottom: 1px solid #eee; padding: 12px 0; }
         .log-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .log-type { font-size: 14px; color: #4169E1; font-weight: bold; min-width: 40px; }
+        .log-type { font-size: 14px; color: #4169E1; font-weight: bold; }
         .log-time { font-size: 13px; color: #666; font-family: monospace; flex-grow: 1; text-align: right; }
         .log-val { font-size: 26px; font-weight: bold; color: #333; margin-top: 5px; }
+        
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
@@ -26,12 +33,18 @@
 </head>
 <body>
     <div id="progress-bar"></div>
-    <div id="log-toggle">查看紀錄清單</div>
+    
+    <div id="header-controls">
+        <div id="sacred-text">南無本師大自在王佛</div>
+        <div id="log-toggle">查看紀錄清單</div>
+    </div>
+
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:35px; cursor:pointer; padding:10px;">✕</div>
-        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:10px; margin-bottom:15px;">九字禪 修持歷程 (紀錄已保護)</div>
+        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:10px; margin-bottom:15px;">九字禪 修持歷程</div>
         <div id="log-content"></div>
     </div>
+
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
     <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
@@ -68,10 +81,8 @@
                 let val = typeof item === 'string' ? (item.match(/\d+/) || [""])[0] : (item.count || "");
                 let fullTime = typeof item === 'string' ? item : (item.time || "");
                 
-                // 徹底清理所有雜字與換行
                 fullTime = fullTime.replace(/[★大關卡達標紀錄:：\n\r]/g, "").replace(val, "").trim();
                 
-                // 處理舊格式時間並強制加上冒號
                 let parts = fullTime.split(' ');
                 let timePart = parts[parts.length - 1];
                 if (timePart && timePart.length === 6 && !timePart.includes(':')) {
@@ -79,7 +90,6 @@
                     fullTime = fullTime.replace(timePart, fixed);
                 }
 
-                // 修正年份並移除多餘斜線
                 fullTime = fullTime.replace(/114\//g, "2025/").replace(/2014\//g, "2025/");
                 if (fullTime && !fullTime.includes("2025/")) fullTime = "2025/" + fullTime;
                 fullTime = fullTime.replace(/\/+/g, "/").replace(/\s+/g, " ");
@@ -125,7 +135,7 @@
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching && confirm("確定要將目前數字歸零嗎？(已有的歷史紀錄將會被保存，不會消失)")) { 
+                if (isHolding && !isPinching && confirm("確定要歸零嗎？(歷史紀錄將被保存)")) { 
                     count = 0; updateDisplay(); 
                 }
                 stopHolding();
