@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v2.6</title>
+    <title>九字禪計數器 v2.8</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
-        #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: auto; }
-        #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 18px; background: rgba(65, 105, 225, 0.7); color: white; border-radius: 20px; font-size: 14px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: none; transition: transform 0.1s ease-out; }
+        #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 18px; background: rgba(65, 105, 225, 0.7); color: white; border-radius: 20px; font-size: 14px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); }
         #log-panel { position: absolute; top: 0; right: -100%; width: 90%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
         #log-panel.active { right: 0; }
         .log-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; flex-direction: column; gap: 4px; }
         .log-row { display: flex; justify-content: space-between; align-items: center; }
         .log-type { font-size: 13px; color: #666; }
         .log-val { font-size: 18px; font-weight: bold; color: #333; }
-        .log-time { font-size: 13px; color: #999; font-family: monospace; }
-        .log-milestone .log-val { color: #D2691E; }
+        .log-time { font-size: 12px; color: #999; font-family: monospace; }
         .log-milestone { border-left: 4px solid #D2691E; padding-left: 10px; background: #FFFBF0; }
+        .log-milestone .log-val { color: #D2691E; }
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
@@ -37,12 +37,13 @@
     </div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    <div class="ui-text hint">點擊數字5次手動校正<br>雙指縮放 / 長按 3秒 歸零</div>
-    <div class="ui-text version">v2.6 排版優化版</div>
+    <div class="ui-text hint">雙指可縮放數字大小<br>長按 3秒 歸零</div>
+    <div class="ui-text version">v2.8 純淨縮放版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
         let history = JSON.parse(localStorage.getItem('myHistory')) || [];
+        let currentScale = 1, startScale = 1, initialDist = 0;
         let holdTimer, visualTimer, isHolding = false, isPinching = false, startTime = 0;
 
         const counter = document.getElementById('counter');
@@ -51,18 +52,6 @@
         const logContent = document.getElementById('log-content');
 
         function doVibrate(p) { if(navigator.vibrate) { navigator.vibrate(0); navigator.vibrate(p); } }
-
-        // 校正功能
-        let clickShield = 0;
-        counter.onclick = (e) => {
-            clickShield++;
-            if (clickShield === 5) {
-                let m = prompt("請手動輸入目前的計數數字：", count);
-                if (m !== null && !isNaN(m)) { count = parseInt(m); updateDisplay(); }
-                clickShield = 0;
-            }
-            setTimeout(() => { clickShield = 0; }, 2000);
-        };
 
         function updateDisplay() {
             counter.innerText = count;
@@ -85,20 +74,15 @@
                 let displayVal = item.count || "";
                 let displayTime = item.time || "";
                 let displayType = item.type || "紀錄";
-
-                // 強力修復邏輯：如果數據擠在一起 (如 1000012/30...)
+                // 舊格式修復邏輯
                 if (typeof item === 'string') {
                     displayVal = item.match(/\d+/)[0];
                     displayTime = item.replace(displayVal, "").trim();
                 } else if (displayVal && displayTime.includes(displayVal)) {
                     displayTime = displayTime.replace(displayVal, "").trim();
                 }
-
                 return `<div class="log-item ${item.isMajor?'log-milestone':''}">
-                    <div class="log-row">
-                        <span class="log-type">${displayType}</span>
-                        <span class="log-time">${displayTime}</span>
-                    </div>
+                    <div class="log-row"><span class="log-type">${displayType}</span><span class="log-time">${displayTime}</span></div>
                     <div class="log-val">${displayVal}</div>
                 </div>`;
             }).join('');
@@ -110,9 +94,25 @@
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startTime = Date.now();
-            if (e.touches.length === 1) { isPinching = false; startHolding(); }
-            else { isPinching = true; stopHolding(); }
+            if (e.touches.length === 1) {
+                isPinching = false;
+                startHolding();
+            } else if (e.touches.length === 2) {
+                isPinching = true;
+                stopHolding();
+                initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                startScale = currentScale;
+            }
         }, { passive: false });
+
+        control.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                const currentDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                currentScale = startScale * (currentDist / initialDist);
+                currentScale = Math.min(Math.max(currentScale, 0.2), 8);
+                counter.style.transform = `scale(${currentScale})`;
+            }
+        });
 
         control.addEventListener('touchend', (e) => {
             if (!isPinching && (Date.now() - startTime) < 400) {
@@ -124,10 +124,10 @@
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && confirm("確定要歸零嗎？歷史紀錄將會保留。")) { count = 0; updateDisplay(); }
+                if (isHolding && !isPinching && confirm("確定要歸零嗎？")) { count = 0; updateDisplay(); }
                 stopHolding();
             }, 3500);
-            visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
+            visualTimer = setTimeout(() => { if(isHolding && !isPinching) document.getElementById('progress-bar').classList.add('active'); }, 2800);
         }
 
         function stopHolding() {
