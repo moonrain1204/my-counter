@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v2.9</title>
+    <title>九字禪計數器 v3.0</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
         #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: none; transition: transform 0.1s ease-out; }
         #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 18px; background: rgba(65, 105, 225, 0.7); color: white; border-radius: 20px; font-size: 14px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); }
-        #log-panel { position: absolute; top: 0; right: -100%; width: 90%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
+        #log-panel { position: absolute; top: 0; right: -100%; width: 92%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
         #log-panel.active { right: 0; }
-        .log-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; flex-direction: column; gap: 4px; }
-        .log-row { display: flex; justify-content: space-between; align-items: center; }
-        .log-type { font-size: 13px; color: #666; }
-        .log-val { font-size: 20px; font-weight: bold; color: #333; }
-        .log-time { font-size: 13px; color: #888; font-family: monospace; }
+        .log-item { border-bottom: 1px solid #eee; padding: 15px 0; display: flex; flex-direction: column; gap: 5px; }
+        .log-row { display: flex; justify-content: space-between; align-items: flex-end; }
+        .log-type { font-size: 14px; color: #4169E1; font-weight: bold; }
+        .log-time { font-size: 14px; color: #888; font-family: monospace; letter-spacing: 0.5px; }
+        .log-val { font-size: 24px; font-weight: bold; color: #333; margin-top: 2px; }
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
@@ -29,14 +29,14 @@
     <div id="progress-bar"></div>
     <div id="log-toggle">查看紀錄清單</div>
     <div id="log-panel">
-        <div id="log-close" style="text-align:right; font-size:28px; cursor:pointer; padding-bottom:10px;">✕</div>
-        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:8px; margin-bottom:15px;">九字禪 修持歷程</div>
+        <div id="log-close" style="text-align:right; font-size:32px; cursor:pointer; padding: 0 5px 10px 0;">✕</div>
+        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:10px; margin-bottom:15px; color: #333;">九字禪 修持歷程</div>
         <div id="log-content"></div>
     </div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    <div class="ui-text hint">雙指可縮放數字大小<br>長按 3秒 歸零</div>
-    <div class="ui-text version">v2.9 年份修正版</div>
+    <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零</div>
+    <div class="ui-text version">v3.0 終極穩定版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -59,30 +59,34 @@
 
         function saveToHistory() {
             const now = new Date();
-            // 強制設定年份為 2025
             const dateStr = "2025/" + (now.getMonth()+1).toString().padStart(2,'0') + "/" + now.getDate().toString().padStart(2,'0');
             const timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
-            history.unshift({ type: "達標", count: count, time: dateStr + " " + timeStr });
+            history.unshift({ count: count, time: dateStr + " " + timeStr });
             if (history.length > 100) history.pop();
             localStorage.setItem('myHistory', JSON.stringify(history));
-            doVibrate(200);
+            doVibrate(250);
         }
 
         function renderHistory() {
             logContent.innerHTML = history.map(item => {
-                let displayVal = item.count || "";
-                let displayTime = item.time || "";
+                let displayVal = "";
+                let displayTime = "";
                 
-                // 修復舊數據中的年份與空格
                 if (typeof item === 'string') {
-                    displayVal = item.match(/\d+/)[0];
-                    displayTime = item.replace(displayVal, "").replace("★大關卡:", "").replace("達標:", "").trim();
+                    const match = item.match(/\d+/);
+                    displayVal = match ? match[0] : "----";
+                    displayTime = item.replace(/[★大關卡達標紀錄:：]/g, "").replace(displayVal, "").trim();
                 } else {
-                    displayTime = displayTime.replace("★大關卡:", "").replace("達標:", "");
+                    displayVal = item.count || "----";
+                    displayTime = (item.time || "").replace(/[★大關卡達標紀錄:：]/g, "").trim();
                 }
-                
-                // 確保顯示 2025 年
-                if (displayTime.includes("114/")) displayTime = displayTime.replace("114/", "2025/");
+
+                // 強制校正所有顯示年份為 2025
+                if (displayTime.includes("114/") || displayTime.includes("2014/")) {
+                    displayTime = displayTime.replace("114/", "2025/").replace("2014/", "2025/");
+                } else if (displayTime.length > 0 && !displayTime.includes("2025/")) {
+                    displayTime = "2025/" + displayTime;
+                }
 
                 return `<div class="log-item">
                     <div class="log-row">
@@ -130,7 +134,7 @@
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching && confirm("確定要歸零嗎？紀錄將保留。")) { count = 0; updateDisplay(); }
+                if (isHolding && !isPinching && confirm("確定要歸零嗎？歷史紀錄將保留。")) { count = 0; updateDisplay(); }
                 stopHolding();
             }, 3500);
             visualTimer = setTimeout(() => { if(isHolding && !isPinching) document.getElementById('progress-bar').classList.add('active'); }, 2800);
