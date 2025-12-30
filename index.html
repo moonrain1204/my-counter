@@ -3,15 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v3.3</title>
+    <title>九字禪計數器 v3.5</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        /* 頂部控制列排版 */
-        #header-controls { position: absolute; top: 15px; width: 100%; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        #sacred-text { color: #8B4513; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-shadow: 1px 1px 1px rgba(255,255,255,0.8); }
-        #log-toggle { padding: 8px 15px; background: rgba(65, 105, 225, 0.8); color: white; border-radius: 20px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px); white-space: nowrap; }
+        /* 頂部控制列：確保兩者同高且垂直居中 */
+        #header-controls { 
+            position: absolute; 
+            top: 15px; 
+            width: 100%; 
+            padding: 0 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; /* 關鍵：強制子元素在同一水平線置中對齊 */
+            z-index: 100; 
+        }
+        
+        /* 粗體楷書：調整行高確保對齊 */
+        #sacred-text { 
+            color: #8B4513; 
+            font-family: "Kaiti TC", "標楷體", "BiauKai", "KaiTi", serif; 
+            font-size: 19px; 
+            font-weight: 900; 
+            letter-spacing: 1px; 
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.9);
+            line-height: 1; /* 去除多餘行高干擾 */
+        }
+        
+        #log-toggle { 
+            padding: 8px 15px; 
+            background: rgba(65, 105, 225, 0.8); 
+            color: white; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            cursor: pointer; 
+            backdrop-filter: blur(4px); 
+            white-space: nowrap;
+            line-height: 1; /* 與左側保持一致的行高對齊基準 */
+            display: flex;
+            align-items: center;
+        }
 
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
         #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: none; transition: transform 0.1s ease-out; }
@@ -33,18 +65,15 @@
 </head>
 <body>
     <div id="progress-bar"></div>
-    
     <div id="header-controls">
         <div id="sacred-text">南無本師大自在王佛</div>
         <div id="log-toggle">查看紀錄清單</div>
     </div>
-
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:35px; cursor:pointer; padding:10px;">✕</div>
         <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:10px; margin-bottom:15px;">九字禪 修持歷程</div>
         <div id="log-content"></div>
     </div>
-
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
     <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
@@ -80,20 +109,16 @@
             logContent.innerHTML = history.map(item => {
                 let val = typeof item === 'string' ? (item.match(/\d+/) || [""])[0] : (item.count || "");
                 let fullTime = typeof item === 'string' ? item : (item.time || "");
-                
                 fullTime = fullTime.replace(/[★大關卡達標紀錄:：\n\r]/g, "").replace(val, "").trim();
-                
                 let parts = fullTime.split(' ');
                 let timePart = parts[parts.length - 1];
                 if (timePart && timePart.length === 6 && !timePart.includes(':')) {
                     let fixed = timePart.substring(0,2) + ":" + timePart.substring(2,4) + ":" + timePart.substring(4,6);
                     fullTime = fullTime.replace(timePart, fixed);
                 }
-
                 fullTime = fullTime.replace(/114\//g, "2025/").replace(/2014\//g, "2025/");
                 if (fullTime && !fullTime.includes("2025/")) fullTime = "2025/" + fullTime;
                 fullTime = fullTime.replace(/\/+/g, "/").replace(/\s+/g, " ");
-
                 return `<div class="log-item">
                     <div class="log-row">
                         <span class="log-type">達標</span>
@@ -135,9 +160,7 @@
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching && confirm("確定要歸零嗎？(歷史紀錄將被保存)")) { 
-                    count = 0; updateDisplay(); 
-                }
+                if (isHolding && !isPinching && confirm("確定要歸零嗎？(歷史紀錄將被保存)")) { count = 0; updateDisplay(); }
                 stopHolding();
             }, 3500);
             visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
