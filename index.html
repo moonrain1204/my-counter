@@ -3,49 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v4.1</title>
+    <title>九字禪計數器 v4.2</title>
     <style>
+        /* 保持 v4.1 的精確樣式 */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
         #header-controls { 
-            position: absolute; 
-            top: 15px; 
-            width: 100%; 
-            padding: 0 8px; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            z-index: 100; 
+            position: absolute; top: 15px; width: 100%; padding: 0 8px; 
+            display: flex; justify-content: space-around; align-items: center; z-index: 100; 
         }
         
-        /* 使用描邊技術增加厚度，確保筆畫清晰不模糊 */
         #sacred-text { 
             color: #8B4513; 
             font-family: "DFKai-SB", "DFKaiShu-W7", "DFP-ExtraBold-Kaiti", "華康特粗楷體", "標楷體", serif; 
-            font-size: 19px; 
-            font-weight: 900; 
-            letter-spacing: 2.2px; 
-            /* 關鍵：使用描邊替代陰影，保持邊緣銳利 */
+            font-size: 19px; font-weight: 900; letter-spacing: 2.2px; 
             -webkit-text-stroke: 0.8px #8B4513; 
             text-shadow: 0.5px 0.5px 1px rgba(255,255,255,0.5);
-            line-height: 1.2;
-            white-space: nowrap;
-            margin-left: 12px; 
+            line-height: 1.2; white-space: nowrap; margin-left: 12px; 
         }
         
         #log-toggle { 
-            padding: 8px 14px; 
-            background: rgba(112, 128, 144, 0.4); 
-            color: #555; 
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius: 20px; 
-            font-size: 12px; 
-            cursor: pointer; 
-            backdrop-filter: blur(3px); 
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
+            padding: 8px 14px; background: rgba(112, 128, 144, 0.4); 
+            color: #555; border: 1px solid rgba(0,0,0,0.1); border-radius: 20px; 
+            font-size: 12px; cursor: pointer; backdrop-filter: blur(3px); 
+            white-space: nowrap; display: flex; align-items: center;
         }
 
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
@@ -81,8 +63,8 @@
     </div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
-    <div class="ui-text version">v4.1 清晰特粗版</div>
+    <div class="ui-text hint">雙指縮放數字 / 長按 3.5秒 語音歸零</div>
+    <div class="ui-text version">v4.2 語音提醒歸零版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -91,46 +73,48 @@
         let holdTimer, visualTimer, isHolding = false, isPinching = false, startTime = 0;
         const counter = document.getElementById('counter');
         const logContent = document.getElementById('log-content');
+
+        // 語音播報函數
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-TW';
+                utterance.rate = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
         function doVibrate(p) { if(navigator.vibrate) { navigator.vibrate(0); navigator.vibrate(p); } }
+        
         function updateDisplay() {
             counter.innerText = count;
             localStorage.setItem('myCounter', count);
             if (count > 0 && count % 500 === 0) saveToHistory();
         }
+
         function saveToHistory() {
             const now = new Date();
             const dateStr = "2025/" + (now.getMonth()+1).toString().padStart(2,'0') + "/" + now.getDate().toString().padStart(2,'0');
             const timeStr = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0');
             history.unshift({ count: count, time: dateStr + " " + timeStr });
-            if (history.length > 200) history.pop();
             localStorage.setItem('myHistory', JSON.stringify(history));
             doVibrate(250);
         }
+
         function renderHistory() {
             logContent.innerHTML = history.map(item => {
-                let val = typeof item === 'string' ? (item.match(/\d+/) || [""])[0] : (item.count || "");
-                let fullTime = typeof item === 'string' ? item : (item.time || "");
-                fullTime = fullTime.replace(/[★大關卡達標紀錄:：\n\r]/g, "").replace(val, "").trim();
-                let parts = fullTime.split(' ');
-                let timePart = parts[parts.length - 1];
-                if (timePart && timePart.length === 6 && !timePart.includes(':')) {
-                    let fixed = timePart.substring(0,2) + ":" + timePart.substring(2,4) + ":" + timePart.substring(4,6);
-                    fullTime = fullTime.replace(timePart, fixed);
-                }
-                fullTime = fullTime.replace(/114\//g, "2025/").replace(/2014\//g, "2025/");
-                if (fullTime && !fullTime.includes("2025/")) fullTime = "2025/" + fullTime;
-                fullTime = fullTime.replace(/\/+/g, "/").replace(/\s+/g, " ");
+                let val = item.count || 0;
+                let fullTime = item.time || "";
                 return `<div class="log-item">
-                    <div class="log-row">
-                        <span class="log-type">達標</span>
-                        <span class="log-time">${fullTime}</span>
-                    </div>
+                    <div class="log-row"><span class="log-type">達標</span><span class="log-time">${fullTime}</span></div>
                     <div class="log-val">${val}</div>
                 </div>`;
             }).join('');
         }
+
         document.getElementById('log-toggle').onclick = () => { document.getElementById('log-panel').classList.add('active'); renderHistory(); };
         document.getElementById('log-close').onclick = () => { document.getElementById('log-panel').classList.remove('active'); };
+
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -142,6 +126,7 @@
                 startScale = currentScale;
             }
         }, { passive: false });
+
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
@@ -149,18 +134,29 @@
                 counter.style.transform = `scale(${currentScale})`;
             }
         });
+
         control.addEventListener('touchend', (e) => {
             if (!isPinching && (Date.now() - startTime) < 400) { count++; updateDisplay(); doVibrate(40); }
             stopHolding();
         });
+
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching && confirm("確定要將目前數字歸零嗎？(歷史紀錄將被保存)")) { count = 0; updateDisplay(); }
+                if (isHolding && !isPinching) {
+                    speak("請問是否要歸零？"); // 觸發語音
+                    setTimeout(() => { // 稍微延遲彈出視窗，讓語音先跑
+                        if (confirm("確定要將目前數字歸零嗎？")) {
+                            count = 0;
+                            updateDisplay();
+                        }
+                    }, 100);
+                }
                 stopHolding();
             }, 3500);
             visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
         }
+
         function stopHolding() { isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer); document.getElementById('progress-bar').classList.remove('active'); }
         updateDisplay();
     </script>
