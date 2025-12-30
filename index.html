@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v3.7</title>
+    <title>九字禪計數器 v3.8</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        /* 頂部控制列：改用 space-around 讓兩端空白均等 */
+        /* 頂部控制列：space-around 確保聖號與按鈕兩邊留白均等 */
         #header-controls { 
             position: absolute; 
             top: 15px; 
             width: 100%; 
-            padding: 0 5px; /* 縮減內距，由 space-around 決定留白 */
+            padding: 0 5px; 
             display: flex; 
-            justify-content: space-around; /* 關鍵：讓聖號左側與按鈕右側有相等的留白 */
+            justify-content: space-around; 
             align-items: center; 
             z-index: 100; 
         }
@@ -59,6 +59,8 @@
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
+        .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; width: auto; text-align: left; }
+        
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
     </style>
@@ -78,10 +80,11 @@
 
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
+    
     <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
+    <div class="ui-text version">v3.8 華康楷體平衡版</div>
 
     <script>
-        // (JavaScript 部分保持 v3.6 的穩定邏輯，確保年份 2025 與紀錄保存)
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
         let history = JSON.parse(localStorage.getItem('myHistory')) || [];
         let currentScale = 1, startScale = 1, initialDist = 0;
