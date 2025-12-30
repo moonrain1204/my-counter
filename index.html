@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v3.8</title>
+    <title>九字禪計數器 v3.9</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        /* 頂部控制列：space-around 確保聖號與按鈕兩邊留白均等 */
+        /* 頂部控制列 */
         #header-controls { 
             position: absolute; 
             top: 15px; 
@@ -31,14 +31,16 @@
             white-space: nowrap;
         }
         
+        /* 弱化對比後的按鈕樣式 */
         #log-toggle { 
             padding: 8px 14px; 
-            background: rgba(65, 105, 225, 0.8); 
-            color: white; 
+            background: rgba(112, 128, 144, 0.45); /* 改為柔和的石板藍灰色，降低不透明度 */
+            color: #555; /* 文字顏色也改為深灰色，降低視覺衝擊 */
+            border: 1px solid rgba(0,0,0,0.1);
             border-radius: 20px; 
             font-size: 13px; 
             cursor: pointer; 
-            backdrop-filter: blur(4px); 
+            backdrop-filter: blur(3px); 
             white-space: nowrap;
             line-height: 1.2;
             display: flex;
@@ -52,8 +54,8 @@
         #log-panel.active { right: 0; }
         .log-item { border-bottom: 1px solid #eee; padding: 12px 0; }
         .log-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .log-type { font-size: 14px; color: #4169E1; font-weight: bold; }
-        .log-time { font-size: 13px; color: #666; font-family: monospace; flex-grow: 1; text-align: right; }
+        .log-type { font-size: 14px; color: #708090; font-weight: bold; }
+        .log-time { font-size: 13px; color: #888; font-family: monospace; flex-grow: 1; text-align: right; }
         .log-val { font-size: 26px; font-weight: bold; color: #333; margin-top: 5px; }
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
@@ -74,7 +76,7 @@
 
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:35px; cursor:pointer; padding:10px;">✕</div>
-        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #4169E1; padding-bottom:10px; margin-bottom:15px;">九字禪 修持歷程</div>
+        <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #708090; padding-bottom:10px; margin-bottom:15px; color:#333;">九字禪 修持歷程</div>
         <div id="log-content"></div>
     </div>
 
@@ -82,7 +84,7 @@
     <div id="control-layer"></div>
     
     <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
-    <div class="ui-text version">v3.8 華康楷體平衡版</div>
+    <div class="ui-text version">v3.9 視覺對比弱化版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
