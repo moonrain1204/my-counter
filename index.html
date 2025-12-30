@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v3.9</title>
+    <title>九字禪計數器 v4.0</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -20,22 +20,24 @@
             z-index: 100; 
         }
         
+        /* 強化後的聖號樣式 */
         #sacred-text { 
             color: #8B4513; 
             font-family: "DFKai-SB", "DFKaiShu-W7", "DFP-ExtraBold-Kaiti", "華康特粗楷體", "標楷體", serif; 
             font-size: 19px; 
             font-weight: 900; 
-            letter-spacing: 0.5px; 
-            text-shadow: 0.5px 0.5px 1px rgba(255,255,255,0.8);
+            letter-spacing: 2.5px; /* 字間距加大 */
+            /* 透過多層陰影模擬更粗的字體效果 */
+            text-shadow: 1px 0px 1px #8B4513, -1px 0px 1px #8B4513, 0px 1px 1px #8B4513, 0px -1px 1px #8B4513, 1px 1px 2px rgba(255,255,255,0.8);
             line-height: 1.2;
             white-space: nowrap;
+            margin-left: 10px; /* 往右移一點點 */
         }
         
-        /* 弱化對比後的按鈕樣式 */
         #log-toggle { 
             padding: 8px 14px; 
-            background: rgba(112, 128, 144, 0.45); /* 改為柔和的石板藍灰色，降低不透明度 */
-            color: #555; /* 文字顏色也改為深灰色，降低視覺衝擊 */
+            background: rgba(112, 128, 144, 0.45); 
+            color: #555; 
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 20px; 
             font-size: 13px; 
@@ -73,36 +75,29 @@
         <div id="sacred-text">南無本師大自在王佛</div>
         <div id="log-toggle">查看紀錄清單</div>
     </div>
-
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:35px; cursor:pointer; padding:10px;">✕</div>
         <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #708090; padding-bottom:10px; margin-bottom:15px; color:#333;">九字禪 修持歷程</div>
         <div id="log-content"></div>
     </div>
-
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
-    
     <div class="ui-text hint">雙指縮放數字 / 長按 3秒 歸零 (不刪紀錄)</div>
-    <div class="ui-text version">v3.9 視覺對比弱化版</div>
+    <div class="ui-text version">v4.0 莊嚴美學微調版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
         let history = JSON.parse(localStorage.getItem('myHistory')) || [];
         let currentScale = 1, startScale = 1, initialDist = 0;
         let holdTimer, visualTimer, isHolding = false, isPinching = false, startTime = 0;
-
         const counter = document.getElementById('counter');
         const logContent = document.getElementById('log-content');
-
         function doVibrate(p) { if(navigator.vibrate) { navigator.vibrate(0); navigator.vibrate(p); } }
-
         function updateDisplay() {
             counter.innerText = count;
             localStorage.setItem('myCounter', count);
             if (count > 0 && count % 500 === 0) saveToHistory();
         }
-
         function saveToHistory() {
             const now = new Date();
             const dateStr = "2025/" + (now.getMonth()+1).toString().padStart(2,'0') + "/" + now.getDate().toString().padStart(2,'0');
@@ -112,7 +107,6 @@
             localStorage.setItem('myHistory', JSON.stringify(history));
             doVibrate(250);
         }
-
         function renderHistory() {
             logContent.innerHTML = history.map(item => {
                 let val = typeof item === 'string' ? (item.match(/\d+/) || [""])[0] : (item.count || "");
@@ -136,10 +130,8 @@
                 </div>`;
             }).join('');
         }
-
         document.getElementById('log-toggle').onclick = () => { document.getElementById('log-panel').classList.add('active'); renderHistory(); };
         document.getElementById('log-close').onclick = () => { document.getElementById('log-panel').classList.remove('active'); };
-
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -151,7 +143,6 @@
                 startScale = currentScale;
             }
         }, { passive: false });
-
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
@@ -159,12 +150,10 @@
                 counter.style.transform = `scale(${currentScale})`;
             }
         });
-
         control.addEventListener('touchend', (e) => {
             if (!isPinching && (Date.now() - startTime) < 400) { count++; updateDisplay(); doVibrate(40); }
             stopHolding();
         });
-
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
@@ -173,9 +162,7 @@
             }, 3500);
             visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
         }
-
         function stopHolding() { isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer); document.getElementById('progress-bar').classList.remove('active'); }
-
         updateDisplay();
     </script>
 </body>
