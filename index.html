@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v2.2</title>
+    <title>九字禪計數器 v2.3</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html {
@@ -51,13 +51,20 @@
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
         .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; }
         
-        /* 歸零進度條 */
-        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: #4169E1; width: 0%; z-index: 200; }
+        /* v2.3 優化：進度條預設透明，長按 3 秒後才變色跑動 */
+        #progress-bar { 
+            position: absolute; top: 0; left: 0; height: 6px; 
+            background-color: transparent; width: 0%; z-index: 200; 
+        }
+        #progress-bar.active {
+            background-color: #FF4500; 
+            transition: width 0.8s linear; 
+            width: 100% !important;
+        }
     </style>
 </head>
 <body>
     <div id="progress-bar"></div>
-    
     <div id="log-toggle">紀錄清單</div>
     
     <div id="log-panel">
@@ -70,7 +77,7 @@
     <div id="control-layer"></div>
     
     <div class="ui-text hint">達 500/1000 倍數自動存檔<br>雙指縮放 / 長按 3秒 歸零</div>
-    <div class="ui-text version">v2.2 九字禪計數版</div>
+    <div class="ui-text version">v2.3 靜音進度版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -79,6 +86,7 @@
         let startScale = 1;
         let initialDist = 0;
         let holdTimer = null;
+        let visualTimer = null;
         let isHolding = false;
         let isPinching = false;
         let startTime = 0;
@@ -87,127 +95,4 @@
         const control = document.getElementById('control-layer');
         const progressBar = document.getElementById('progress-bar');
         const logToggle = document.getElementById('log-toggle');
-        const logPanel = document.getElementById('log-panel');
-        const logClose = document.getElementById('log-close');
-        const logContent = document.getElementById('log-content');
-
-        function doVibrate(pattern) {
-            if (window.navigator && window.navigator.vibrate) {
-                window.navigator.vibrate(0);
-                window.navigator.vibrate(pattern);
-            }
-        }
-
-        // 抽屜邏輯
-        logToggle.onclick = (e) => { 
-            e.stopPropagation(); 
-            logPanel.classList.add('active'); 
-            renderHistory(); 
-        };
-        logClose.onclick = () => { logPanel.classList.remove('active'); };
-
-        function updateDisplay() {
-            counter.innerText = count;
-            localStorage.setItem('myCounter', count);
-            
-            // 邏輯判定
-            if (count > 0 && count % 1000 === 0) {
-                saveToHistory(true);
-            } else if (count > 0 && count % 1000 === 500) {
-                saveToHistory(false);
-            }
-        }
-
-        function saveToHistory(isMajor) {
-            const now = new Date();
-            const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
-            const type = isMajor ? "★大關卡" : "達標";
-            const record = { type, count, time: timeStr, isMajor };
-            
-            history.unshift(record);
-            if (history.length > 100) history.pop();
-            localStorage.setItem('myHistory', JSON.stringify(history));
-            
-            if (isMajor) doVibrate([500, 100, 500]); else doVibrate([300, 100, 300]);
-        }
-
-        function renderHistory() {
-            if (history.length === 0) {
-                logContent.innerHTML = "<p style='text-align:center; opacity:0.5; margin-top:50px;'>尚未有達標紀錄</p>";
-                return;
-            }
-            logContent.innerHTML = history.map(item => `
-                <div class="log-item ${item.isMajor ? 'log-milestone' : ''}">
-                    <span>${item.type}: <b>${item.count}</b></span>
-                    <span style="color:#888;">${item.time}</span>
-                </div>
-            `).join('');
-        }
-
-        updateDisplay();
-
-        // 防止誤觸刷新
-        window.addEventListener('beforeunload', (e) => { if (count > 0) { e.preventDefault(); e.returnValue = ''; } });
-
-        control.addEventListener('touchstart', (e) => {
-            if (logPanel.classList.contains('active')) return;
-            e.preventDefault();
-            startTime = Date.now();
-            if (e.touches.length === 1) {
-                isPinching = false;
-                startHolding();
-            } else if (e.touches.length === 2) {
-                isPinching = true;
-                stopHolding();
-                initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                startScale = currentScale;
-            }
-        }, { passive: false });
-
-        control.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2) {
-                const currentDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                currentScale = startScale * (currentDist / initialDist);
-                currentScale = Math.min(Math.max(currentScale, 0.2), 8);
-                counter.style.transform = `scale(${currentScale})`;
-            }
-        });
-
-        control.addEventListener('touchend', (e) => {
-            if (logPanel.classList.contains('active')) return;
-            const duration = Date.now() - startTime;
-            if (!isPinching && duration < 500) {
-                count++;
-                updateDisplay();
-                doVibrate(30);
-            }
-            stopHolding();
-            setTimeout(() => { isPinching = false; }, 200);
-        });
-
-        function startHolding() {
-            isHolding = true;
-            progressBar.style.transition = "width 3s linear";
-            progressBar.style.width = "100%";
-            holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching) {
-                    doVibrate(200); 
-                    if (confirm("確定歸零嗎？歷史紀錄將保留。")) {
-                        count = 0;
-                        updateDisplay();
-                        doVibrate([400, 150, 400]);
-                    }
-                }
-                stopHolding();
-            }, 3000);
-        }
-
-        function stopHolding() {
-            isHolding = false;
-            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-            progressBar.style.transition = "none";
-            progressBar.style.width = "0%";
-        }
-    </script>
-</body>
-</html>
+        const
