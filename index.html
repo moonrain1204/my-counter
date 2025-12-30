@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v2.4</title>
+    <title>九字禪計數器 v2.5</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
-        /* 數字層現在允許點擊，用於校正 */
         #counter { color: #00008B; font-size: 100px; font-weight: bold; pointer-events: auto; }
-        #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 15px; background: rgba(65, 105, 225, 0.4); color: white; border-radius: 20px; font-size: 13px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); }
-        #log-panel { position: absolute; top: 0; right: -100%; width: 85%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 150; transition: right 0.3s ease; padding: 20px; overflow-y: auto; }
+        #log-toggle { position: absolute; top: 15px; right: 15px; padding: 8px 15px; background: rgba(65, 105, 225, 0.6); color: white; border-radius: 20px; font-size: 13px; z-index: 100; cursor: pointer; backdrop-filter: blur(4px); }
+        #log-panel { position: absolute; top: 0; right: -100%; width: 85%; height: 100%; background: white; z-index: 150; transition: right 0.3s ease; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
-        .log-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; }
-        #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        .log-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; font-size: 14px; color: #333; }
+        .log-milestone { color: #D2691E; font-weight: bold; }
+        #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: pointer; }
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
         .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; }
@@ -24,16 +24,16 @@
 </head>
 <body>
     <div id="progress-bar"></div>
-    <div id="log-toggle">紀錄清單</div>
+    <div id="log-toggle">查看紀錄</div>
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:28px; cursor:pointer;">✕</div>
-        <div style="font-size:18px; font-weight:bold; border-bottom:2px solid #4169E1; padding-bottom:5px;">九字禪 達標歷史</div>
+        <div style="font-size:18px; font-weight:bold; border-bottom:2px solid #4169E1; margin-bottom:10px;">九字禪 歷史紀錄</div>
         <div id="log-content"></div>
     </div>
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
     <div class="ui-text hint">校正：點擊數字5次<br>雙指縮放 / 長按 3秒 歸零</div>
-    <div class="ui-text version">v2.4 修復校正版</div>
+    <div class="ui-text version">v2.5 格式修復版</div>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -44,71 +44,67 @@
 
         const counter = document.getElementById('counter');
         const control = document.getElementById('control-layer');
-        const progressBar = document.getElementById('progress-bar');
-        const logToggle = document.getElementById('log-toggle');
         const logPanel = document.getElementById('log-panel');
         const logContent = document.getElementById('log-content');
 
-        function doVibrate(pattern) { if (window.navigator && window.navigator.vibrate) { window.navigator.vibrate(0); window.navigator.vibrate(pattern); } }
+        function doVibrate(p) { if(navigator.vibrate) { navigator.vibrate(0); navigator.vibrate(p); } }
 
-        // --- 手動校正功能 ---
+        // 校正功能
         let clickShield = 0;
         counter.onclick = (e) => {
-            e.stopPropagation();
             clickShield++;
             if (clickShield === 5) {
-                let manual = prompt("請手動填回目前的數字：", count);
-                if (manual !== null && !isNaN(manual)) {
-                    count = parseInt(manual);
-                    updateDisplay();
-                    alert("數字已同步。");
-                }
+                let m = prompt("輸入目前的數字：", count);
+                if (m !== null) { count = parseInt(m); updateDisplay(); }
                 clickShield = 0;
             }
             setTimeout(() => { clickShield = 0; }, 2000);
         };
 
-        logToggle.onclick = (e) => { e.stopPropagation(); logPanel.classList.add('active'); renderHistory(); };
-        document.getElementById('log-close').onclick = () => { logPanel.classList.remove('active'); };
-
         function updateDisplay() {
             counter.innerText = count;
             localStorage.setItem('myCounter', count);
-            if (count > 0 && count % 1000 === 0) saveToHistory(true);
-            else if (count > 0 && count % 1000 === 500) saveToHistory(false);
+            if (count > 0 && count % 500 === 0) saveToHistory(count % 1000 === 0);
         }
 
         function saveToHistory(isMajor) {
-            const now = new Date();
-            const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
-            history.unshift({ type: isMajor?"★大關卡":"達標", count, time: timeStr, isMajor });
+            const timeStr = new Date().toLocaleString('zh-TW', {hour12:false}).split(' ')[1];
+            history.unshift({ type: isMajor?"★大關卡":"達標", count: count, time: timeStr, isMajor: isMajor });
             if (history.length > 100) history.pop();
             localStorage.setItem('myHistory', JSON.stringify(history));
-            doVibrate(isMajor ? [500,100,500] : 300);
+            doVibrate(isMajor ? [500,100,500] : 200);
         }
 
         function renderHistory() {
-            logContent.innerHTML = history.length === 0 ? "<p style='text-align:center; opacity:0.5; margin-top:50px;'>尚未有達標紀錄</p>" :
-                history.map(item => `<div class="log-item ${item.isMajor?'log-milestone':''}"><span>${item.type}: <b>${item.count}</b></span><span style="color:#888;">${item.time}</span></div>`).join('');
+            logContent.innerHTML = history.map(item => {
+                // 自動修復舊格式數據
+                let type = item.type || "紀錄";
+                let val = item.count || item; 
+                let time = item.time || "--:--";
+                return `<div class="log-item ${item.isMajor?'log-milestone':''}">
+                    <span>${type}: <b>${val}</b></span>
+                    <span style="color:#999;">${time}</span>
+                </div>`;
+            }).join('');
         }
 
-        updateDisplay();
+        document.getElementById('log-toggle').onclick = () => { logPanel.classList.add('active'); renderHistory(); };
+        document.getElementById('log-close').onclick = () => { logPanel.classList.remove('active'); };
 
+        // 點擊事件修復：針對 LINE 瀏覽器優化
         control.addEventListener('touchstart', (e) => {
-            if (logPanel.classList.contains('active')) return;
             e.preventDefault();
             startTime = Date.now();
             if (e.touches.length === 1) { isPinching = false; startHolding(); }
-            else if (e.touches.length === 2) { isPinching = true; stopHolding(); initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY); startScale = currentScale; }
+            else { isPinching = true; stopHolding(); }
         }, { passive: false });
 
         control.addEventListener('touchend', (e) => {
-            if (logPanel.classList.contains('active')) return;
             const duration = Date.now() - startTime;
-            if (!isPinching && duration < 500) {
+            if (!isPinching && duration < 400) {
                 count++;
                 updateDisplay();
-                doVibrate(30);
+                doVibrate(40);
             }
             stopHolding();
         });
@@ -116,21 +112,18 @@
         function startHolding() {
             isHolding = true;
             holdTimer = setTimeout(() => {
-                if (isHolding && !isPinching) {
-                    doVibrate(200);
-                    if (confirm("確定歸零嗎？歷史紀錄將保留。")) { count = 0; updateDisplay(); doVibrate([400,150,400]); }
-                }
+                if (isHolding && confirm("確定歸零？")) { count = 0; updateDisplay(); }
                 stopHolding();
-            }, 3800);
-            visualTimer = setTimeout(() => { if (isHolding && !isPinching) progressBar.classList.add('active'); }, 3000);
+            }, 3500);
+            visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
         }
 
         function stopHolding() {
-            isHolding = false;
-            clearTimeout(holdTimer); clearTimeout(visualTimer);
-            progressBar.classList.remove('active');
-            progressBar.style.width = "0%";
+            isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer);
+            document.getElementById('progress-bar').classList.remove('active');
         }
+
+        updateDisplay();
     </script>
 </body>
 </html>
