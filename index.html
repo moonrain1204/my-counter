@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.2</title>
+    <title>九字禪計數器 v5.3</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -40,7 +40,7 @@
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
-        /* 底部資訊欄：版本與提示同高同大 */
+        /* 底部資訊欄：版本與歸零提示對齊 */
         .bottom-bar { 
             position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
             display: flex; justify-content: space-between; align-items: center;
@@ -70,15 +70,14 @@
     </div>
 
     <div class="bottom-bar">
-        <div class="mini-info">v5.2 極簡對稱版</div>
-        <div class="mini-info">右上角圓點可查看紀錄</div>
+        <div class="mini-info">v5.3 提示優化版</div>
+        <div class="mini-info">長按可歸零</div>
     </div>
 
     <script>
         let count = 0;
         let history = [];
 
-        // 資料初始化與過濾 undefined
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
