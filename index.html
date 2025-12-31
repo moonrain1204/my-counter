@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v4.6</title>
+    <title>九字禪計數器 v4.7</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -37,6 +37,8 @@
         
         .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
         .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
+        /* 補回版本號樣式 */
+        .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; width: auto; text-align: left; }
         
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
@@ -56,7 +58,9 @@
         <div id="log-content"></div>
         <button onclick="clearAllHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; font-size:16px; font-weight:bold;">清空所有歷史紀錄</button>
     </div>
-    <div class="ui-text hint">長按 3.5秒 語音歸零 / 點擊已取消震動</div>
+
+    <div class="ui-text hint">長按 3.5秒 語音歸零 / 點擊無震動</div>
+    <div class="ui-text version">v4.7 穩定語音回歸版</div>
 
     <script>
         let count = 0;
@@ -101,12 +105,10 @@
                 </div>`).join('');
         }
 
-        // 語音播放函數
         function speak(text) {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'zh-TW';
-                utterance.rate = 1.0;
                 speechSynthesis.speak(utterance);
             }
         }
@@ -125,7 +127,7 @@
                 isPinching = false; isHolding = true;
                 holdTimer = setTimeout(() => {
                     if (isHolding && !isPinching) {
-                        speak("請問是否要歸零？"); // 恢復語音提示
+                        speak("請問是否要歸零？");
                         setTimeout(() => { if (confirm("確定要將目前數字歸零嗎？")) { count = 0; updateDisplay(); } }, 150);
                     }
                     isHolding = false; document.getElementById('progress-bar').classList.remove('active');
@@ -147,7 +149,6 @@
         });
 
         control.addEventListener('touchend', (e) => {
-            // 點擊事件：移除震動，僅增加計數
             if (!isPinching && (Date.now() - startTime) < 400) { 
                 count++; updateDisplay(); 
                 if (count > 0 && count % 500 === 0) {
@@ -156,7 +157,6 @@
                     history.unshift({ count: count, time: timeStr });
                     localStorage.setItem('myHistory', JSON.stringify(history));
                 }
-                // 原有的震動指令 navigator.vibrate(40) 已被移除，點擊不再震動
             }
             isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer);
             document.getElementById('progress-bar').classList.remove('active');
