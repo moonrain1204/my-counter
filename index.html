@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.0</title>
+    <title>九字禪計數器 v5.2</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        /* 頂部控制列：改為相對定位以便聖號置中 */
+        /* 頂部控制列 */
         #header-controls { 
             position: absolute; top: 20px; width: 100%; 
             display: flex; justify-content: center; align-items: center; z-index: 100; 
         }
         
-        /* 聖號：完全置中 */
+        /* 聖號：維持 v5.0 置中樣式 */
         #sacred-text { 
             color: #8B4513; 
             font-family: "華康特粗楷體", "DFKai-SB", "標楷體", serif; 
@@ -24,10 +24,10 @@
             text-align: center;
         }
         
-        /* 紀錄按鈕：改為右上角圓點 */
+        /* 紀錄按鈕：右上角圓點 */
         #log-toggle { 
             position: absolute; right: 20px; top: 0px;
-            width: 12px; height: 12px; background: rgba(112, 128, 144, 0.5); 
+            width: 12px; height: 12px; background: rgba(112, 128, 144, 0.4); 
             border-radius: 50%; cursor: pointer; backdrop-filter: blur(2px);
             border: 1px solid rgba(0,0,0,0.1);
         }
@@ -40,9 +40,13 @@
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
-        .ui-text { position: absolute; width: 100%; text-align: center; pointer-events: none; z-index: 5; }
-        .hint { bottom: 60px; color: #8b8b7a; font-size: 14px; }
-        .version { bottom: 10px; left: 10px; color: #bcbcad; font-size: 10px; width: auto; text-align: left; }
+        /* 底部資訊欄：版本與提示同高同大 */
+        .bottom-bar { 
+            position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            pointer-events: none; z-index: 5;
+        }
+        .mini-info { color: #bcbcad; font-size: 10px; font-family: sans-serif; }
         
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
@@ -52,7 +56,7 @@
     <div id="progress-bar"></div>
     <div id="header-controls">
         <div id="sacred-text">南無本師大自在王佛</div>
-        <div id="log-toggle" title="查看紀錄"></div>
+        <div id="log-toggle"></div>
     </div>
 
     <div id="display-layer"><div id="counter">0</div></div>
@@ -65,13 +69,16 @@
         <button onclick="clearAllHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; font-size:16px; font-weight:bold;">清空所有歷史紀錄</button>
     </div>
 
-    <div class="ui-text hint">聖號已置中 / 右上角圓點查看紀錄</div>
-    <div class="ui-text version">v5.0 極簡置中版</div>
+    <div class="bottom-bar">
+        <div class="mini-info">v5.2 極簡對稱版</div>
+        <div class="mini-info">右上角圓點可查看紀錄</div>
+    </div>
 
     <script>
         let count = 0;
         let history = [];
 
+        // 資料初始化與過濾 undefined
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
