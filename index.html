@@ -3,28 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v4.9</title>
+    <title>九字禪計數器 v5.0</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
+        /* 頂部控制列：改為相對定位以便聖號置中 */
         #header-controls { 
-            position: absolute; top: 15px; width: 100%; padding: 0 10px; 
-            display: flex; justify-content: space-around; align-items: center; z-index: 100; 
+            position: absolute; top: 20px; width: 100%; 
+            display: flex; justify-content: center; align-items: center; z-index: 100; 
         }
         
+        /* 聖號：完全置中 */
         #sacred-text { 
             color: #8B4513; 
             font-family: "華康特粗楷體", "DFKai-SB", "標楷體", serif; 
-            font-size: 19px; font-weight: 900; letter-spacing: 2.2px; 
+            font-size: 20px; font-weight: 900; letter-spacing: 2px; 
             -webkit-text-stroke: 0.8px #8B4513; 
-            line-height: 1.2; white-space: nowrap; margin-left: 12px; 
+            line-height: 1.2; white-space: nowrap;
+            text-align: center;
         }
         
+        /* 紀錄按鈕：改為右上角圓點 */
         #log-toggle { 
-            padding: 8px 14px; background: rgba(112, 128, 144, 0.4); 
-            color: #444; border: 1px solid rgba(0,0,0,0.1); border-radius: 20px; 
-            font-size: 12px; cursor: pointer; backdrop-filter: blur(3px); 
+            position: absolute; right: 20px; top: 0px;
+            width: 12px; height: 12px; background: rgba(112, 128, 144, 0.5); 
+            border-radius: 50%; cursor: pointer; backdrop-filter: blur(2px);
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
@@ -47,10 +52,12 @@
     <div id="progress-bar"></div>
     <div id="header-controls">
         <div id="sacred-text">南無本師大自在王佛</div>
-        <div id="log-toggle">查看紀錄清單</div>
+        <div id="log-toggle" title="查看紀錄"></div>
     </div>
+
     <div id="display-layer"><div id="counter">0</div></div>
     <div id="control-layer"></div>
+
     <div id="log-panel">
         <div id="log-close" style="text-align:right; font-size:35px; cursor:pointer; padding:10px;">✕</div>
         <div style="font-size:20px; font-weight:bold; border-bottom:3px solid #708090; padding-bottom:10px; margin-bottom:15px;">九字禪 修持歷程</div>
@@ -58,14 +65,13 @@
         <button onclick="clearAllHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; font-size:16px; font-weight:bold;">清空所有歷史紀錄</button>
     </div>
 
-    <div class="ui-text hint">達標已取消震動 / 長按震動+語音歸零</div>
-    <div class="ui-text version">v4.9 達標靜默版</div>
+    <div class="ui-text hint">聖號已置中 / 右上角圓點查看紀錄</div>
+    <div class="ui-text version">v5.0 極簡置中版</div>
 
     <script>
         let count = 0;
         let history = [];
 
-        // 資料初始化與清理
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
@@ -126,7 +132,6 @@
                 isPinching = false; isHolding = true;
                 holdTimer = setTimeout(() => {
                     if (isHolding && !isPinching) {
-                        // 僅歸零時震動
                         if(navigator.vibrate) navigator.vibrate(80); 
                         speak("請問是否要歸零？");
                         setTimeout(() => { if (confirm("確定要將目前數字歸零嗎？")) { count = 0; updateDisplay(); } }, 150);
@@ -157,7 +162,6 @@
                     const timeStr = `${now.getFullYear()}/${(now.getMonth()+1)}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
                     history.unshift({ count: count, time: timeStr });
                     localStorage.setItem('myHistory', JSON.stringify(history));
-                    // 此處已移除 navigator.vibrate 達標大震動
                 }
             }
             isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer);
