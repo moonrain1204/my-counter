@@ -3,28 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.3</title>
+    <title>九字禪計數器 v5.4</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        /* 頂部控制列 */
         #header-controls { 
             position: absolute; top: 20px; width: 100%; 
             display: flex; justify-content: center; align-items: center; z-index: 100; 
         }
         
-        /* 聖號：維持 v5.0 置中樣式 */
         #sacred-text { 
             color: #8B4513; 
             font-family: "華康特粗楷體", "DFKai-SB", "標楷體", serif; 
             font-size: 20px; font-weight: 900; letter-spacing: 2px; 
             -webkit-text-stroke: 0.8px #8B4513; 
-            line-height: 1.2; white-space: nowrap;
-            text-align: center;
+            line-height: 1.2; white-space: nowrap; text-align: center;
         }
         
-        /* 紀錄按鈕：右上角圓點 */
         #log-toggle { 
             position: absolute; right: 20px; top: 0px;
             width: 12px; height: 12px; background: rgba(112, 128, 144, 0.4); 
@@ -32,15 +28,22 @@
             border: 1px solid rgba(0,0,0,0.1);
         }
 
-        #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
-        #counter { color: #00008B; font-size: 100px; font-weight: bold; transition: transform 0.1s ease-out; }
+        /* 數字顯示層，改為由 JS 控制 transform */
+        #display-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+            pointer-events: none; z-index: 1; 
+        }
+        #counter { 
+            color: #00008B; font-size: 100px; font-weight: bold; 
+            position: relative; will-change: transform;
+        }
         
         #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
-        /* 底部資訊欄：版本與歸零提示對齊 */
         .bottom-bar { 
             position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
             display: flex; justify-content: space-between; align-items: center;
@@ -70,13 +73,15 @@
     </div>
 
     <div class="bottom-bar">
-        <div class="mini-info">v5.3 提示優化版</div>
+        <div class="mini-info">v5.4 拖曳增強版</div>
         <div class="mini-info">長按可歸零</div>
     </div>
 
     <script>
         let count = 0;
         let history = [];
+        let posX = 0, posY = 0; // 紀錄位置
+        let currentScale = 1;
 
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
@@ -91,6 +96,11 @@
         function updateDisplay() {
             counter.innerText = count;
             localStorage.setItem('myCounter', count);
+            applyTransform();
+        }
+
+        function applyTransform() {
+            counter.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
         }
 
         function clearAllHistory() {
@@ -127,17 +137,20 @@
         document.getElementById('log-toggle').onclick = () => { document.getElementById('log-panel').classList.add('active'); renderHistory(); };
         document.getElementById('log-close').onclick = () => { document.getElementById('log-panel').classList.remove('active'); };
 
-        let currentScale = 1, startScale = 1, initialDist = 0;
-        let holdTimer, visualTimer, isHolding = false, isPinching = false, startTime = 0;
+        let startScale = 1, initialDist = 0;
+        let holdTimer, visualTimer, dragModeTimer;
+        let isHolding = false, isPinching = false, isDragging = false;
+        let startTime = 0, lastTouchX = 0, lastTouchY = 0;
 
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startTime = Date.now();
+            
             if (e.touches.length === 1) { 
-                isPinching = false; isHolding = true;
+                isPinching = false; isHolding = true; isDragging = false;
                 holdTimer = setTimeout(() => {
-                    if (isHolding && !isPinching) {
+                    if (isHolding && !isPinching && !isDragging) {
                         if(navigator.vibrate) navigator.vibrate(80); 
                         speak("請問是否要歸零？");
                         setTimeout(() => { if (confirm("確定要將目前數字歸零嗎？")) { count = 0; updateDisplay(); } }, 150);
@@ -145,23 +158,48 @@
                     isHolding = false; document.getElementById('progress-bar').classList.remove('active');
                 }, 3500);
                 visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
-            } else if (e.touches.length === 2) {
-                isPinching = true; isHolding = false; clearTimeout(holdTimer);
+            } 
+            else if (e.touches.length === 2) {
+                isPinching = true; isHolding = false; 
+                clearTimeout(holdTimer);
                 initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 startScale = currentScale;
+                
+                // 紀錄兩指中心點以便拖曳
+                lastTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
+                lastTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
+
+                // 兩指長按2秒進入拖曳模式
+                dragModeTimer = setTimeout(() => {
+                    if (isPinching) {
+                        isDragging = true;
+                        if(navigator.vibrate) navigator.vibrate(30); // 微弱震動提示可拖曳
+                    }
+                }, 2000);
             }
         }, { passive: false });
 
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
+                // 處理縮放
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 currentScale = Math.min(Math.max(startScale * (dist / initialDist), 0.2), 8);
-                counter.style.transform = `scale(${currentScale})`;
+
+                // 處理拖曳 (若已過2秒則觸發位移)
+                if (isDragging) {
+                    const currentTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
+                    const currentTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
+                    posX += (currentTouchX - lastTouchX);
+                    posY += (currentTouchY - lastTouchY);
+                    lastTouchX = currentTouchX;
+                    lastTouchY = currentTouchY;
+                }
+                applyTransform();
             }
         });
 
         control.addEventListener('touchend', (e) => {
-            if (!isPinching && (Date.now() - startTime) < 400) { 
+            if (!isPinching && !isDragging && (Date.now() - startTime) < 400) { 
                 count++; updateDisplay(); 
                 if (count > 0 && count % 500 === 0) {
                     const now = new Date();
@@ -170,7 +208,8 @@
                     localStorage.setItem('myHistory', JSON.stringify(history));
                 }
             }
-            isHolding = false; clearTimeout(holdTimer); clearTimeout(visualTimer);
+            isHolding = false; isPinching = false; isDragging = false;
+            clearTimeout(holdTimer); clearTimeout(visualTimer); clearTimeout(dragModeTimer);
             document.getElementById('progress-bar').classList.remove('active');
         });
 
