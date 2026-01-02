@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.7</title>
+    <title>九字禪計數器 v5.8</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -23,36 +23,38 @@
         
         #log-toggle { 
             position: absolute; right: 20px; top: 0px;
-            width: 12px; height: 12px; background: rgba(112, 128, 144, 0.4); 
+            width: 14px; height: 14px; background: rgba(112, 128, 144, 0.4); 
             border-radius: 50%; cursor: pointer; backdrop-filter: blur(2px);
-            border: 1px solid rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.1); pointer-events: auto;
         }
 
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
         #counter { color: #00008B; font-size: 100px; font-weight: bold; position: relative; will-change: transform; }
         
-        #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
+        #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: #fff; z-index: 1000; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
         
+        /* 點擊感應層 */
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
+        /* 底部區域 - 提升 z-index 確保不被 control-layer 攔截 */
         .bottom-bar { 
             position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
             display: flex; justify-content: space-between; align-items: flex-end;
-            pointer-events: none; z-index: 5;
+            z-index: 500; pointer-events: none; 
         }
-        .left-group { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
-        .mini-info { color: #bcbcad; font-size: 10px; font-family: sans-serif; }
+        .left-group { display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .mini-info { color: #bcbcad; font-size: 11px; font-family: sans-serif; }
         
-        .target-area { display: flex; align-items: center; gap: 5px; color: #bcbcad; font-size: 13px; }
+        .target-area { display: flex; align-items: center; gap: 5px; color: #bcbcad; font-size: 14px; }
         #target-input {
-            background: rgba(255, 255, 255, 0.3); border: none; border-bottom: 1.5px solid #bcbcad;
-            color: #8b8b7a; font-size: 14px; width: 70px; outline: none; padding: 2px 5px;
-            border-radius: 2px; caret-color: #8B4513;
+            background: rgba(255, 255, 255, 0.5); border: none; border-bottom: 2px solid #bcbcad;
+            color: #555; font-size: 16px; width: 80px; outline: none; padding: 2px 5px;
+            border-radius: 2px; caret-color: #8B4513; pointer-events: auto;
         }
-        #est-result { color: #8b8b7a; font-weight: bold; }
+        #est-result { color: #8b8b7a; font-weight: bold; font-size: 13px; }
 
-        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
+        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 800; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
     </style>
 </head>
@@ -76,12 +78,12 @@
     <div class="bottom-bar">
         <div class="left-group">
             <div class="target-area">
-                目標: <input type="number" id="target-input" oninput="updateEstimation()"> 
+                目標: <input type="number" id="target-input" oninput="updateEstimation()" onclick="event.stopPropagation()"> 
                 <span id="est-result"></span>
             </div>
-            <div class="mini-info">v5.7 完整功能版</div>
+            <div class="mini-info">v5.8 旗艦修正版</div>
         </div>
-        <div class="mini-info">長按可歸零</div>
+        <div class="mini-info" style="pointer-events:none;">長按可歸零</div>
     </div>
 
     <script>
@@ -167,7 +169,11 @@
             }
         }
 
-        document.getElementById('log-toggle').onclick = () => { document.getElementById('log-panel').classList.add('active'); renderHistory(); };
+        document.getElementById('log-toggle').onclick = (e) => { 
+            e.stopPropagation();
+            document.getElementById('log-panel').classList.add('active'); 
+            renderHistory(); 
+        };
         document.getElementById('log-close').onclick = () => { document.getElementById('log-panel').classList.remove('active'); };
 
         let startScale = 1, initialDist = 0;
@@ -177,7 +183,9 @@
 
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
-            if (e.target.id === 'target-input') return;
+            // 關鍵修正：如果是點擊輸入框或按鈕，不啟動計數邏輯
+            if (e.target.id === 'target-input' || e.target.id === 'log-toggle') return;
+            
             e.preventDefault();
             startTime = Date.now();
             
@@ -200,20 +208,20 @@
                 lastTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
                 lastTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
                 
-                // 兩指長按2秒觸發拖曳模式
                 dragModeTimer = setTimeout(() => {
-                    if (isPinching) { isDragging = true; if(navigator.vibrate) navigator.vibrate(30); }
+                    if (isPinching) { 
+                        isDragging = true; 
+                        if(navigator.vibrate) navigator.vibrate(30); 
+                    }
                 }, 2000);
             }
         }, { passive: false });
 
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
-                // 處理縮放
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 currentScale = Math.min(Math.max(startScale * (dist / initialDist), 0.2), 8);
                 
-                // 處理拖曳
                 const currentTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
                 const currentTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
                 if (isDragging) {
@@ -227,7 +235,8 @@
         });
 
         control.addEventListener('touchend', (e) => {
-            if (e.target.id === 'target-input') return;
+            if (e.target.id === 'target-input' || e.target.id === 'log-toggle') return;
+            
             if (!isPinching && !isDragging && (Date.now() - startTime) < 400) { 
                 count++; updateDisplay(); 
                 if (count > 0 && count % 500 === 0) {
