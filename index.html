@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.6</title>
+    <title>九字禪計數器 v5.7</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -36,7 +36,6 @@
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
-        /* 底部資訊區域 */
         .bottom-bar { 
             position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
             display: flex; justify-content: space-between; align-items: flex-end;
@@ -45,12 +44,11 @@
         .left-group { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
         .mini-info { color: #bcbcad; font-size: 10px; font-family: sans-serif; }
         
-        /* 優化後的目標輸入框 */
         .target-area { display: flex; align-items: center; gap: 5px; color: #bcbcad; font-size: 13px; }
         #target-input {
             background: rgba(255, 255, 255, 0.3); border: none; border-bottom: 1.5px solid #bcbcad;
             color: #8b8b7a; font-size: 14px; width: 70px; outline: none; padding: 2px 5px;
-            border-radius: 2px; caret-color: #8B4513; /* 棕色游標 */
+            border-radius: 2px; caret-color: #8B4513;
         }
         #est-result { color: #8b8b7a; font-weight: bold; }
 
@@ -78,10 +76,10 @@
     <div class="bottom-bar">
         <div class="left-group">
             <div class="target-area">
-                目標: <input type="number" id="target-input" placeholder="" oninput="updateEstimation()"> 
+                目標: <input type="number" id="target-input" oninput="updateEstimation()"> 
                 <span id="est-result"></span>
             </div>
-            <div class="mini-info">v5.6 智能預測優化版</div>
+            <div class="mini-info">v5.7 完整功能版</div>
         </div>
         <div class="mini-info">長按可歸零</div>
     </div>
@@ -91,7 +89,6 @@
         let history = [];
         let posX = 0, posY = 0, currentScale = 1;
 
-        // 初始化
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
@@ -121,30 +118,21 @@
             
             if (!target || target <= count) { resSpan.innerText = ""; return; }
 
-            let secondsPerUnit = 9; // 預設速率 (每9秒+1)
+            let secondsPerUnit = 9; 
             const remaining = target - count;
 
-            // 邏輯：若大於500，依最近500次速率計算
             if (count >= 500 && history.length >= 2) {
                 try {
                     const latest = new Date(history[0].time);
                     const previous = new Date(history[1].time);
                     const diffMs = latest - previous;
-                    if (diffMs > 0) {
-                        secondsPerUnit = (diffMs / 1000) / 500;
-                    }
+                    if (diffMs > 0) secondsPerUnit = (diffMs / 1000) / 500;
                 } catch(e) {}
             }
 
             const totalSecondsNeeded = remaining * secondsPerUnit;
             const targetDate = new Date(Date.now() + totalSecondsNeeded * 1000);
-            
-            const month = targetDate.getMonth() + 1;
-            const day = targetDate.getDate();
-            const hour = targetDate.getHours().toString().padStart(2, '0');
-            const min = targetDate.getMinutes().toString().padStart(2, '0');
-            
-            resSpan.innerText = `預計: ${month}/${day} ${hour}:${min}`;
+            resSpan.innerText = `預計: ${targetDate.getMonth()+1}/${targetDate.getDate()} ${targetDate.getHours().toString().padStart(2,'0')}:${targetDate.getMinutes().toString().padStart(2,'0')}`;
         }
 
         function clearAllHistory() {
@@ -189,11 +177,10 @@
 
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
-            // 排除輸入框的觸控，避免無法點擊輸入
             if (e.target.id === 'target-input') return;
-            
             e.preventDefault();
             startTime = Date.now();
+            
             if (e.touches.length === 1) { 
                 isPinching = false; isHolding = true; isDragging = false;
                 holdTimer = setTimeout(() => {
@@ -212,6 +199,8 @@
                 startScale = currentScale;
                 lastTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
                 lastTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
+                
+                // 兩指長按2秒觸發拖曳模式
                 dragModeTimer = setTimeout(() => {
                     if (isPinching) { isDragging = true; if(navigator.vibrate) navigator.vibrate(30); }
                 }, 2000);
@@ -220,16 +209,19 @@
 
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
+                // 處理縮放
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 currentScale = Math.min(Math.max(startScale * (dist / initialDist), 0.2), 8);
+                
+                // 處理拖曳
+                const currentTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
+                const currentTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
                 if (isDragging) {
-                    const currentTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
-                    const currentTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
                     posX += (currentTouchX - lastTouchX);
                     posY += (currentTouchY - lastTouchY);
-                    lastTouchX = currentTouchX;
-                    lastTouchY = currentTouchY;
                 }
+                lastTouchX = currentTouchX;
+                lastTouchY = currentTouchY;
                 applyTransform();
             }
         });
