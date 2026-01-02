@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.5</title>
+    <title>九字禪計數器 v5.6</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -42,14 +42,17 @@
             display: flex; justify-content: space-between; align-items: flex-end;
             pointer-events: none; z-index: 5;
         }
-        .left-group { display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+        .left-group { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
         .mini-info { color: #bcbcad; font-size: 10px; font-family: sans-serif; }
         
-        /* 目標輸入框樣式 */
+        /* 優化後的目標輸入框 */
+        .target-area { display: flex; align-items: center; gap: 5px; color: #bcbcad; font-size: 13px; }
         #target-input {
-            background: transparent; border: none; border-bottom: 1px solid #bcbcad;
-            color: #8b8b7a; font-size: 11px; width: 50px; outline: none; padding: 0;
+            background: rgba(255, 255, 255, 0.3); border: none; border-bottom: 1.5px solid #bcbcad;
+            color: #8b8b7a; font-size: 14px; width: 70px; outline: none; padding: 2px 5px;
+            border-radius: 2px; caret-color: #8B4513; /* 棕色游標 */
         }
+        #est-result { color: #8b8b7a; font-weight: bold; }
 
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
@@ -74,11 +77,11 @@
 
     <div class="bottom-bar">
         <div class="left-group">
-            <div class="mini-info">
-                目標: <input type="number" id="target-input" placeholder="設定" onchange="updateEstimation()"> 
-                <span id="est-result" style="margin-left:5px;"></span>
+            <div class="target-area">
+                目標: <input type="number" id="target-input" placeholder="" oninput="updateEstimation()"> 
+                <span id="est-result"></span>
             </div>
-            <div class="mini-info">v5.5 智能預測版</div>
+            <div class="mini-info">v5.6 智能預測優化版</div>
         </div>
         <div class="mini-info">長按可歸零</div>
     </div>
@@ -88,11 +91,13 @@
         let history = [];
         let posX = 0, posY = 0, currentScale = 1;
 
+        // 初始化
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
             history = rawHistory.filter(item => item && item.count !== undefined && item.time !== undefined);
-            document.getElementById('target-input').value = localStorage.getItem('myTarget') || "";
+            const savedTarget = localStorage.getItem('myTarget');
+            if(savedTarget) document.getElementById('target-input').value = savedTarget;
         } catch (e) { history = []; }
 
         const counter = document.getElementById('counter');
@@ -116,10 +121,10 @@
             
             if (!target || target <= count) { resSpan.innerText = ""; return; }
 
-            let secondsPerUnit = 9; // 預設速率
+            let secondsPerUnit = 9; // 預設速率 (每9秒+1)
             const remaining = target - count;
 
-            // 若有歷史紀錄且目前大於500，計算最近一次達標的速率
+            // 邏輯：若大於500，依最近500次速率計算
             if (count >= 500 && history.length >= 2) {
                 try {
                     const latest = new Date(history[0].time);
@@ -184,6 +189,9 @@
 
         const control = document.getElementById('control-layer');
         control.addEventListener('touchstart', (e) => {
+            // 排除輸入框的觸控，避免無法點擊輸入
+            if (e.target.id === 'target-input') return;
+            
             e.preventDefault();
             startTime = Date.now();
             if (e.touches.length === 1) { 
@@ -227,6 +235,7 @@
         });
 
         control.addEventListener('touchend', (e) => {
+            if (e.target.id === 'target-input') return;
             if (!isPinching && !isDragging && (Date.now() - startTime) < 400) { 
                 count++; updateDisplay(); 
                 if (count > 0 && count % 500 === 0) {
