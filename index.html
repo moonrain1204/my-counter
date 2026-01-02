@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.4</title>
+    <title>九字禪計數器 v5.5</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
@@ -28,29 +28,29 @@
             border: 1px solid rgba(0,0,0,0.1);
         }
 
-        /* 數字顯示層，改為由 JS 控制 transform */
-        #display-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; justify-content: center; align-items: center; 
-            pointer-events: none; z-index: 1; 
-        }
-        #counter { 
-            color: #00008B; font-size: 100px; font-weight: bold; 
-            position: relative; will-change: transform;
-        }
+        #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
+        #counter { color: #00008B; font-size: 100px; font-weight: bold; position: relative; will-change: transform; }
         
         #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: #fff; z-index: 150; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
         
         #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
         
+        /* 底部資訊區域 */
         .bottom-bar { 
             position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: flex-end;
             pointer-events: none; z-index: 5;
         }
+        .left-group { display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
         .mini-info { color: #bcbcad; font-size: 10px; font-family: sans-serif; }
         
+        /* 目標輸入框樣式 */
+        #target-input {
+            background: transparent; border: none; border-bottom: 1px solid #bcbcad;
+            color: #8b8b7a; font-size: 11px; width: 50px; outline: none; padding: 0;
+        }
+
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 200; }
         #progress-bar.active { background-color: #FF4500; transition: width 0.8s linear; width: 100% !important; }
     </style>
@@ -73,21 +73,26 @@
     </div>
 
     <div class="bottom-bar">
-        <div class="mini-info">v5.4 拖曳增強版</div>
+        <div class="left-group">
+            <div class="mini-info">
+                目標: <input type="number" id="target-input" placeholder="設定" onchange="updateEstimation()"> 
+                <span id="est-result" style="margin-left:5px;"></span>
+            </div>
+            <div class="mini-info">v5.5 智能預測版</div>
+        </div>
         <div class="mini-info">長按可歸零</div>
     </div>
 
     <script>
         let count = 0;
         let history = [];
-        let posX = 0, posY = 0; // 紀錄位置
-        let currentScale = 1;
+        let posX = 0, posY = 0, currentScale = 1;
 
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
             history = rawHistory.filter(item => item && item.count !== undefined && item.time !== undefined);
-            localStorage.setItem('myHistory', JSON.stringify(history));
+            document.getElementById('target-input').value = localStorage.getItem('myTarget') || "";
         } catch (e) { history = []; }
 
         const counter = document.getElementById('counter');
@@ -97,10 +102,44 @@
             counter.innerText = count;
             localStorage.setItem('myCounter', count);
             applyTransform();
+            updateEstimation();
         }
 
         function applyTransform() {
             counter.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
+        }
+
+        function updateEstimation() {
+            const target = parseInt(document.getElementById('target-input').value);
+            const resSpan = document.getElementById('est-result');
+            localStorage.setItem('myTarget', target || "");
+            
+            if (!target || target <= count) { resSpan.innerText = ""; return; }
+
+            let secondsPerUnit = 9; // 預設速率
+            const remaining = target - count;
+
+            // 若有歷史紀錄且目前大於500，計算最近一次達標的速率
+            if (count >= 500 && history.length >= 2) {
+                try {
+                    const latest = new Date(history[0].time);
+                    const previous = new Date(history[1].time);
+                    const diffMs = latest - previous;
+                    if (diffMs > 0) {
+                        secondsPerUnit = (diffMs / 1000) / 500;
+                    }
+                } catch(e) {}
+            }
+
+            const totalSecondsNeeded = remaining * secondsPerUnit;
+            const targetDate = new Date(Date.now() + totalSecondsNeeded * 1000);
+            
+            const month = targetDate.getMonth() + 1;
+            const day = targetDate.getDate();
+            const hour = targetDate.getHours().toString().padStart(2, '0');
+            const min = targetDate.getMinutes().toString().padStart(2, '0');
+            
+            resSpan.innerText = `預計: ${month}/${day} ${hour}:${min}`;
         }
 
         function clearAllHistory() {
@@ -108,6 +147,7 @@
                 history = [];
                 localStorage.setItem('myHistory', JSON.stringify(history));
                 renderHistory();
+                updateEstimation();
             }
         }
 
@@ -146,7 +186,6 @@
         control.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startTime = Date.now();
-            
             if (e.touches.length === 1) { 
                 isPinching = false; isHolding = true; isDragging = false;
                 holdTimer = setTimeout(() => {
@@ -160,32 +199,21 @@
                 visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
             } 
             else if (e.touches.length === 2) {
-                isPinching = true; isHolding = false; 
-                clearTimeout(holdTimer);
+                isPinching = true; isHolding = false; clearTimeout(holdTimer);
                 initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 startScale = currentScale;
-                
-                // 紀錄兩指中心點以便拖曳
                 lastTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
                 lastTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-
-                // 兩指長按2秒進入拖曳模式
                 dragModeTimer = setTimeout(() => {
-                    if (isPinching) {
-                        isDragging = true;
-                        if(navigator.vibrate) navigator.vibrate(30); // 微弱震動提示可拖曳
-                    }
+                    if (isPinching) { isDragging = true; if(navigator.vibrate) navigator.vibrate(30); }
                 }, 2000);
             }
         }, { passive: false });
 
         control.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
-                // 處理縮放
                 const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 currentScale = Math.min(Math.max(startScale * (dist / initialDist), 0.2), 8);
-
-                // 處理拖曳 (若已過2秒則觸發位移)
                 if (isDragging) {
                     const currentTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
                     const currentTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
