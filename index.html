@@ -3,54 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九字禪計數器 v5.9</title>
+    <title>九字禪計數器 v6.0</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F5F5DC; font-family: sans-serif; user-select: none; touch-action: none; }
         
-        #header-controls { 
-            position: absolute; top: 20px; width: 100%; 
-            display: flex; justify-content: center; align-items: center; z-index: 100; 
-        }
+        #header-controls { position: absolute; top: 20px; width: 100%; display: flex; justify-content: center; align-items: center; z-index: 100; }
+        #sacred-text { color: #8B4513; font-family: "華康特粗楷體", "DFKai-SB", "標楷體", serif; font-size: 20px; font-weight: 900; letter-spacing: 2px; -webkit-text-stroke: 0.8px #8B4513; line-height: 1.2; white-space: nowrap; text-align: center; }
         
-        #sacred-text { 
-            color: #8B4513; 
-            font-family: "華康特粗楷體", "DFKai-SB", "標楷體", serif; 
-            font-size: 20px; font-weight: 900; letter-spacing: 2px; 
-            -webkit-text-stroke: 0.8px #8B4513; 
-            line-height: 1.2; white-space: nowrap; text-align: center;
-        }
-        
-        #log-toggle { 
-            position: absolute; right: 20px; top: 0px;
-            width: 14px; height: 14px; background: rgba(112, 128, 144, 0.4); 
-            border-radius: 50%; cursor: pointer; backdrop-filter: blur(2px);
-            border: 1px solid rgba(0,0,0,0.1); pointer-events: auto;
-        }
+        #log-toggle { position: absolute; right: 20px; top: 0px; width: 14px; height: 14px; background: rgba(112, 128, 144, 0.4); border-radius: 50%; cursor: pointer; backdrop-filter: blur(2px); border: 1px solid rgba(0,0,0,0.1); pointer-events: auto; }
 
         #display-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1; }
-        #counter { color: #00008B; font-size: 100px; font-weight: bold; position: relative; will-change: transform; }
+        #counter { color: #00008B; font-size: 100px; font-weight: bold; position: relative; will-change: transform; transition: transform 0.05s ease-out; }
         
         #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: #fff; z-index: 1000; transition: right 0.3s ease-out; padding: 20px; overflow-y: auto; }
         #log-panel.active { right: 0; }
         
-        #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; }
+        /* 核心感應層：滑鼠在電腦上會顯示手型指針 */
+        #control-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: transparent; cursor: pointer; }
         
-        .bottom-bar { 
-            position: absolute; bottom: 10px; width: 100%; padding: 0 15px;
-            display: flex; justify-content: space-between; align-items: flex-end;
-            z-index: 500; pointer-events: none; 
-        }
+        .bottom-bar { position: absolute; bottom: 10px; width: 100%; padding: 0 15px; display: flex; justify-content: space-between; align-items: flex-end; z-index: 500; pointer-events: none; }
         .left-group { display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
-        .mini-info { color: #bcbcad; font-size: 11px; font-family: sans-serif; }
+        .mini-info { color: #bcbcad; font-size: 11px; }
         
         .target-area { display: flex; align-items: center; gap: 5px; color: #bcbcad; font-size: 14px; }
-        #target-input {
-            background: transparent; border: none; border-bottom: 1px solid #bcbcad;
-            color: #8b8b7a; font-size: 16px; width: 85px; outline: none; padding: 2px 0;
-            border-radius: 0; caret-color: #8B4513; pointer-events: auto;
-            text-align: left;
-        }
+        #target-input { background: transparent; border: none; border-bottom: 1px solid #bcbcad; color: #8b8b7a; font-size: 16px; width: 85px; outline: none; padding: 2px 0; caret-color: #8B4513; pointer-events: auto; }
         #est-result { color: #8b8b7a; font-weight: bold; font-size: 13px; }
 
         #progress-bar { position: absolute; top: 0; left: 0; height: 6px; background-color: transparent; width: 0%; z-index: 800; }
@@ -76,31 +53,30 @@
     <div class="bottom-bar">
         <div class="left-group">
             <div class="target-area">
-                目標: <input type="number" id="target-input" oninput="updateEstimation()" onkeydown="if(event.key==='Enter') this.blur()" placeholder=""> 
+                目標: <input type="number" id="target-input" oninput="updateEstimation()" onkeydown="if(event.key==='Enter') this.blur()"> 
                 <span id="est-result"></span>
             </div>
-            <div class="mini-info">v5.9 介面優化版</div>
+            <div class="mini-info">v6.0 全平台通用版</div>
         </div>
-        <div class="mini-info">長按可歸零</div>
+        <div class="mini-info">長按/右鍵可歸零</div>
     </div>
 
     <script>
         let count = 0, history = [], posX = 0, posY = 0, currentScale = 1;
+        let isTouchDevice = false;
 
+        // 初始化資料
         try {
             count = parseInt(localStorage.getItem('myCounter')) || 0;
             let rawHistory = JSON.parse(localStorage.getItem('myHistory')) || [];
             history = rawHistory.filter(item => item && item.count !== undefined);
-            const savedTarget = localStorage.getItem('myTarget');
-            if(savedTarget) document.getElementById('target-input').value = savedTarget;
+            if(localStorage.getItem('myTarget')) document.getElementById('target-input').value = localStorage.getItem('myTarget');
         } catch (e) { history = []; }
 
-        const counter = document.getElementById('counter');
-        
         function updateDisplay() {
-            counter.innerText = count;
+            document.getElementById('counter').innerText = count;
             localStorage.setItem('myCounter', count);
-            counter.style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
+            document.getElementById('counter').style.transform = `translate(${posX}px, ${posY}px) scale(${currentScale})`;
             updateEstimation();
         }
 
@@ -110,93 +86,105 @@
             localStorage.setItem('myTarget', target || "");
             if (!target || target <= count) { resSpan.innerText = ""; return; }
 
-            let secondsPerUnit = 9; 
+            let sPU = 9; 
             if (count >= 500 && history.length >= 2) {
-                try {
-                    const diffMs = new Date(history[0].time) - new Date(history[1].time);
-                    if (diffMs > 0) secondsPerUnit = (diffMs / 1000) / 500;
-                } catch(e) {}
+                const diff = new Date(history[0].time) - new Date(history[1].time);
+                if (diff > 0) sPU = (diff / 1000) / 500;
             }
-            const targetDate = new Date(Date.now() + (target - count) * secondsPerUnit * 1000);
-            resSpan.innerText = `預計: ${targetDate.getMonth()+1}/${targetDate.getDate()} ${targetDate.getHours()}:${targetDate.getMinutes().toString().padStart(2,'0')}`;
+            const tD = new Date(Date.now() + (target - count) * sPU * 1000);
+            resSpan.innerText = `預計: ${tD.getMonth()+1}/${tD.getDate()} ${tD.getHours()}:${tD.getMinutes().toString().padStart(2,'0')}`;
         }
 
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'zh-TW';
-                speechSynthesis.speak(utterance);
+        function doCount() {
+            count++;
+            updateDisplay();
+            if (count > 0 && count % 500 === 0) {
+                const now = new Date();
+                history.unshift({ count: count, time: `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}` });
+                localStorage.setItem('myHistory', JSON.stringify(history));
             }
         }
 
-        document.getElementById('log-toggle').onclick = (e) => { 
-            e.stopPropagation();
-            document.getElementById('log-panel').classList.add('active'); 
-            renderHistory(); 
-        };
-        document.getElementById('log-close').onclick = () => { document.getElementById('log-panel').classList.remove('active'); };
-
-        function renderHistory() {
-            const logContent = document.getElementById('log-content');
-            logContent.innerHTML = history.length === 0 ? "尚無紀錄" : history.map(item => `<div style="padding:10px; border-bottom:1px solid #eee;">${item.count} - ${item.time}</div>`).join('');
+        // 歸零功能
+        function handleReset() {
+            if (confirm("確定歸零？")) { count = 0; updateDisplay(); }
         }
 
-        let startScale = 1, initialDist = 0, holdTimer, visualTimer, dragModeTimer, isHolding = false, isPinching = false, isDragging = false, startTime = 0, lastTouchX = 0, lastTouchY = 0;
+        // 事件處理
+        const ctrl = document.getElementById('control-layer');
+        let startT = 0, holdT, dragT, isPinching = false, isDragging = false, lastX, lastY, startS;
 
-        const control = document.getElementById('control-layer');
-        control.addEventListener('touchstart', (e) => {
+        // 電腦鍵盤支援：空白鍵
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault(); doCount();
+            }
+        });
+
+        // 觸控邏輯 (手機)
+        ctrl.addEventListener('touchstart', (e) => {
+            isTouchDevice = true; // 標記為觸控設備
             if (e.target.id === 'target-input') return;
             e.preventDefault();
-            // 點擊背景時也讓輸入框失去焦點（退出輸入狀態）
             document.getElementById('target-input').blur();
-            
-            startTime = Date.now();
-            if (e.touches.length === 1) { 
-                isPinching = false; isHolding = true; isDragging = false;
-                holdTimer = setTimeout(() => {
-                    if (isHolding && !isPinching && !isDragging) {
-                        if(navigator.vibrate) navigator.vibrate(80); 
-                        speak("請問是否要歸零？");
-                        setTimeout(() => { if (confirm("確定歸零？")) { count = 0; updateDisplay(); } }, 150);
-                    }
+            startT = Date.now();
+
+            if (e.touches.length === 1) {
+                isDragging = isPinching = false;
+                holdT = setTimeout(() => {
+                    if (!isPinching && !isDragging) handleReset();
                     document.getElementById('progress-bar').classList.remove('active');
                 }, 3500);
-                visualTimer = setTimeout(() => { if(isHolding) document.getElementById('progress-bar').classList.add('active'); }, 2800);
+                setTimeout(() => { if(!isPinching) document.getElementById('progress-bar').classList.add('active'); }, 2800);
             } else if (e.touches.length === 2) {
-                isPinching = true; isHolding = false; clearTimeout(holdTimer);
-                initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                startScale = currentScale;
-                lastTouchX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
-                lastTouchY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-                dragModeTimer = setTimeout(() => { if (isPinching) { isDragging = true; if(navigator.vibrate) navigator.vibrate(30); } }, 2000);
+                isPinching = true; clearTimeout(holdT);
+                lastX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
+                lastY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
+                startS = currentScale;
+                dragT = setTimeout(() => { isDragging = true; }, 2000);
             }
-        }, { passive: false });
+        }, {passive: false});
 
-        control.addEventListener('touchmove', (e) => {
+        ctrl.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2) {
-                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                currentScale = Math.min(Math.max(startScale * (dist / initialDist), 0.2), 8);
-                const ctx = (e.touches[0].pageX + e.touches[1].pageX) / 2, cty = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-                if (isDragging) { posX += (ctx - lastTouchX); posY += (cty - lastTouchY); }
-                lastTouchX = ctx; lastTouchY = cty;
+                const curX = (e.touches[0].pageX + e.touches[1].pageX) / 2;
+                const curY = (e.touches[0].pageY + e.touches[1].pageY) / 2;
+                if (isDragging) { posX += (curX - lastX); posY += (curY - lastY); }
+                lastX = curX; lastY = curY;
                 updateDisplay();
             }
         });
 
-        control.addEventListener('touchend', (e) => {
-            if (e.target.id === 'target-input') return;
-            if (!isPinching && !isDragging && (Date.now() - startTime) < 400) { 
-                count++; updateDisplay(); 
-                if (count > 0 && count % 500 === 0) {
-                    const now = new Date();
-                    history.unshift({ count: count, time: `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}` });
-                    localStorage.setItem('myHistory', JSON.stringify(history));
-                }
-            }
-            isHolding = isPinching = isDragging = false;
-            clearTimeout(holdTimer); clearTimeout(visualTimer); clearTimeout(dragModeTimer);
+        ctrl.addEventListener('touchend', (e) => {
+            if (!isPinching && !isDragging && (Date.now() - startT) < 400) doCount();
+            clearTimeout(holdT); clearTimeout(dragT);
             document.getElementById('progress-bar').classList.remove('active');
         });
+
+        // 滑鼠邏輯 (電腦) - 僅在非觸控觸發時執行
+        ctrl.addEventListener('mousedown', (e) => {
+            if (isTouchDevice) return; // 如果已經觸發過觸控，就不重複執行滑鼠邏輯
+            if (e.target.id === 'target-input') return;
+            
+            if (e.button === 0) { // 左鍵點擊
+                doCount();
+            } else if (e.button === 2) { // 右鍵歸零 (電腦端特有快捷)
+                handleReset();
+            }
+        });
+
+        // 阻擋右鍵選單以利歸零操作
+        ctrl.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.getElementById('log-toggle').onclick = (e) => { 
+            e.stopPropagation(); document.getElementById('log-panel').classList.add('active'); renderHistory(); 
+        };
+        document.getElementById('log-close').onclick = () => document.getElementById('log-panel').classList.remove('active');
+
+        function renderHistory() {
+            const content = document.getElementById('log-content');
+            content.innerHTML = history.length === 0 ? "尚無紀錄" : history.map(item => `<div style="padding:10px; border-bottom:1px solid #eee;">${item.count} - ${item.time}</div>`).join('');
+        }
 
         updateDisplay();
     </script>
