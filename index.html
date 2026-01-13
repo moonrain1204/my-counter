@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>九字禪計數器 v7.5</title>
+    <title>九字禪計數器 v7.6</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { 
@@ -28,8 +28,6 @@
         #counter-movable { color: #00008B; font-size: 100px; font-weight: bold; text-shadow: 2px 2px 4px rgba(255,255,255,0.4); z-index: 60; }
 
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-        
-        /* 紀錄點擊圓圈 */
         #log-toggle { position: absolute; right: 25px; top: 25px; width: 30px; height: 30px; background: rgba(0,0,0,0.2); border-radius: 50%; cursor: pointer; pointer-events: auto; z-index: 200; border: 1px solid rgba(255,255,255,0.2); }
 
         #audio-btns { position: absolute; left: 20px; bottom: 110px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
@@ -41,7 +39,6 @@
         #target-info { position: absolute; right: 20px; bottom: 20px; text-align: right; pointer-events: auto; color: #555; font-size: 13px; background: rgba(255, 255, 255, 0.6); padding: 10px; border-radius: 10px; }
         #target-input { background: transparent; border: none; border-bottom: 2px solid #8B4513; width: 70px; color: #8B4513; font-weight: bold; text-align: center; outline: none; }
 
-        /* 紀錄面板 */
         #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: white; z-index: 2000; transition: right 0.3s ease-out; padding: 25px; overflow-y: auto; pointer-events: auto; }
         #log-panel.active { right: 0; }
         .history-item { padding: 12px; border-bottom: 1px solid #eee; color: #333; font-size: 15px; display: flex; justify-content: space-between; }
@@ -68,8 +65,8 @@
     <div id="ui-layer">
         <div id="log-toggle" onclick="openLog()"></div>
         <div id="audio-btns">
-            <div class="btn" onclick="actAudio('play')"><div style="width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid #8B4513; margin-left: 5px;"></div></div>
-            <div class="btn" onclick="actAudio('pause')"><div style="width: 15px; height: 18px; border-left: 5px solid #8B4513; border-right: 5px solid #8B4513;"></div></div>
+            <div class="btn" onclick="actAudio('play')"><div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:15px solid #8B4513;margin-left:5px;"></div></div>
+            <div class="btn" onclick="actAudio('pause')"><div style="width:15px;height:18px;border-left:5px solid #8B4513;border-right:5px solid #8B4513;"></div></div>
         </div>
         <div id="nav-btns">
             <button class="nav-btn" onclick="goPage(1)">九字禪</button>
@@ -86,7 +83,7 @@
         <div onclick="closeLog()" style="text-align:right; font-size:32px; cursor:pointer; color:#8B4513;">✕</div>
         <h3 style="color:#8B4513; border-bottom:2px solid #8B4513; padding-bottom:10px;">結算紀錄</h3>
         <div id="log-content"></div>
-        <button onclick="clearHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; cursor:pointer; font-size:16px;">清空所有紀錄</button>
+        <button onclick="clearHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; cursor:pointer;">清空所有紀錄</button>
     </div>
 
     <audio id="buddhaAudio" loop><source src="buddha_chant.mp3" type="audio/mpeg"></audio>
@@ -100,26 +97,22 @@
             p1:  { x: 0, y: -150, s: 1 }, p2: { x: 0, y: -50, s: 1 }, p3: { x: 0, y: -100, s: 1 }
         };
 
-        // 核心：紀錄與歸零邏輯
         function performReset() {
             if (count > 0) {
-                // 歸零前存入歷史
                 const now = new Date();
                 const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
                 history.unshift({ count: count, time: timeStr });
                 localStorage.setItem('myHistory', JSON.stringify(history));
             }
-            count = 0;
-            updateUI();
+            count = 0; updateUI();
         }
 
         function openLog() { renderHistory(); document.getElementById('log-panel').classList.add('active'); }
         function closeLog() { document.getElementById('log-panel').classList.remove('active'); }
         function renderHistory() {
-            const container = document.getElementById('log-content');
-            container.innerHTML = history.length === 0 ? 
-                "<p style='color:#999; text-align:center; margin-top:50px;'>尚無結算紀錄</p>" : 
-                history.map(item => `<div class="history-item"><span><b>${item.count} 次</b></span><span style="font-size:12px; color:#999;">${item.time}</span></div>`).join('');
+            document.getElementById('log-content').innerHTML = history.length === 0 ? 
+                "<p style='color:#999; text-align:center; margin-top:50px;'>尚無紀錄</p>" : 
+                history.map(item => `<div class="history-item"><b>${item.count} 次</b><span style="font-size:12px; color:#999;">${item.time}</span></div>`).join('');
         }
         function clearHistory() { if(confirm("確定刪除所有紀錄？")) { history = []; localStorage.setItem('myHistory', "[]"); renderHistory(); } }
 
@@ -128,17 +121,17 @@
             localStorage.setItem('myCounter', count);
             const target = document.getElementById('target-input').value;
             if(target && target > count) {
-                const finishDate = new Date(Date.now() + (target - count) * 1200);
-                document.getElementById('est-time').innerText = `預計: ${finishDate.getMonth()+1}/${finishDate.getDate()} ${finishDate.getHours()}:${finishDate.getMinutes().toString().padStart(2,'0')}`;
+                const d = new Date(Date.now() + (target - count) * 1200);
+                document.getElementById('est-time').innerText = `預計: ${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
             } else { document.getElementById('est-time').innerText = "預計: --/-- --:--"; }
         }
 
-        // 鍵盤與輸入框處理
         document.addEventListener('keydown', (e) => {
             if(isInputFocus) return;
             if(e.code === 'Space') { e.preventDefault(); count++; updateUI(); }
             if(e.key === '1') goPage(1); if(e.key === '2') goPage(2); if(e.key === '3') goPage(3);
         });
+
         const tInput = document.getElementById('target-input');
         tInput.addEventListener('focus', () => isInputFocus = true);
         tInput.addEventListener('blur', () => isInputFocus = false);
@@ -154,30 +147,60 @@
 
         const layer = document.getElementById('global-layer');
         let startT, holdT, visualT, lastX, lastY, startD, isAdjusting = false, touchMoved = false, targetObj = 'bg';
+        let isMouseDown = false;
 
+        // 通用位置判斷
+        function getTarget(x, y) {
+            const el = document.getElementById('counter-movable').getBoundingClientRect();
+            return (x > el.left - 30 && x < el.right + 30 && y > el.top - 30 && y < el.bottom + 30) ? 'num' : 'bg';
+        }
+
+        // 滑鼠事件 (電腦版拖曳核心)
         layer.addEventListener('mousedown', (e) => {
             if (e.pointerType === 'touch') return;
-            if(e.button === 0) { count++; updateUI(); }
-            else if(e.button === 2) { if(confirm("將當前次數存入紀錄並歸零？")) { performReset(); } }
+            if(e.button === 2) { if(confirm("將當前次數存入紀錄並歸零？")) performReset(); return; }
+            if(e.button !== 0) return;
+
+            isMouseDown = true;
+            startT = Date.now();
+            touchMoved = false;
+            lastX = e.clientX; lastY = e.clientY;
+            targetObj = getTarget(e.clientX, e.clientY);
         });
 
+        window.addEventListener('mousemove', (e) => {
+            if(!isMouseDown) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            if(Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                touchMoved = true;
+                if(targetObj === 'num') { state.num.x += dx; state.num.y += dy; }
+                else { state['p'+activePage].x += dx; state['p'+activePage].y += dy; }
+                lastX = e.clientX; lastY = e.clientY;
+                applyTransforms();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if(!isMouseDown) return;
+            isMouseDown = false;
+            if(!touchMoved && (Date.now() - startT < 300)) { count++; updateUI(); }
+        });
+
+        // 觸控事件 (手機版)
         layer.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startT = Date.now(); touchMoved = false;
-            const touch = e.touches[0];
-            const numEl = document.getElementById('counter-movable').getBoundingClientRect();
-            const isNearNum = (touch.clientX > numEl.left - 40 && touch.clientX < numEl.right + 40 &&
-                               touch.clientY > numEl.top - 40 && touch.clientY < numEl.bottom + 40);
-            targetObj = isNearNum ? 'num' : 'bg';
+            const t = e.touches[0];
+            targetObj = getTarget(t.clientX, t.clientY);
 
             if(e.touches.length >= 2) {
                 isAdjusting = true;
                 startD = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             } else {
-                lastX = touch.pageX; lastY = touch.pageY;
+                lastX = t.pageX; lastY = t.pageY;
                 isAdjusting = false;
-                // 手機長按歸零進度條
-                holdT = setTimeout(() => { if(!touchMoved && confirm("將當前次數存入紀錄並歸零？")) performReset(); }, 3500);
+                holdT = setTimeout(() => { if(!touchMoved && confirm("歸零？")) performReset(); }, 3500);
                 visualT = setTimeout(() => { if(!touchMoved) document.getElementById('progress-bar').classList.add('active'); }, 500);
             }
         }, {passive: false});
@@ -192,7 +215,7 @@
             } else if(e.touches.length === 1 && !isAdjusting) {
                 const dx = e.touches[0].pageX - lastX;
                 const dy = e.touches[0].pageY - lastY;
-                if(Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
                     touchMoved = true;
                     clearTimeout(holdT); clearTimeout(visualT); document.getElementById('progress-bar').classList.remove('active');
                     if(targetObj === 'num') { state.num.x += dx; state.num.y += dy; }
@@ -201,7 +224,6 @@
                     applyTransforms();
                 }
             }
-            if(isAdjusting) { clearTimeout(holdT); clearTimeout(visualT); document.getElementById('progress-bar').classList.remove('active'); }
         });
 
         layer.addEventListener('touchend', (e) => {
@@ -214,9 +236,9 @@
 
         function applyTransforms() {
             document.getElementById('counter-movable').style.transform = `translate(${state.num.x}px, ${state.num.y}px) scale(${state.num.s})`;
-            const currentElId = ['text-p1', 'buddha-img', 'scripture-p3'][activePage-1];
+            const id = ['text-p1', 'buddha-img', 'scripture-p3'][activePage-1];
             const s = state['p'+activePage];
-            document.getElementById(currentElId).style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.s})`;
+            document.getElementById(id).style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.s})`;
         }
 
         document.getElementById('target-input').value = localStorage.getItem('myTarget') || "";
