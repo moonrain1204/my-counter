@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>九字禪計數器 v7.6</title>
+    <title>九字禪計數器 v7.7</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { 
@@ -13,45 +13,58 @@
             position: fixed;
         }
         
-        #global-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: transparent; cursor: pointer; }
+        /* 全域感應層 */
+        #global-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; background: transparent; cursor: pointer; }
 
+        /* 內容層 */
         .content-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 5; overflow: hidden; }
         .content-area.active { display: flex; }
 
         .movable { will-change: transform; pointer-events: none; position: absolute; }
         #text-p1 { color: #8B4513; font-family: "標楷體", serif; font-size: 38px; font-weight: 900; white-space: nowrap; }
-        #buddha-img { max-height: 80vh; }
+        #buddha-img { max-height: 75vh; }
         #scripture-p3 { padding: 30px; text-align: center; color: #8B4513; width: 380px; }
-        .scripture-header { font-size: 28px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #8B4513; display: inline-block; }
-        .scripture-content { font-size: 20px; line-height: 1.6; text-align: justify; }
+        .scripture-header { font-size: 26px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #8B4513; display: inline-block; }
+        .scripture-content { font-size: 19px; line-height: 1.6; text-align: justify; }
 
-        #counter-movable { color: #00008B; font-size: 100px; font-weight: bold; text-shadow: 2px 2px 4px rgba(255,255,255,0.4); z-index: 60; }
+        /* 數字層：拉高 z-index 並移除背景色，避免重疊感 */
+        #counter-movable { color: #00008B; font-size: 90px; font-weight: bold; text-shadow: 2px 2px 4px rgba(255,255,255,0.4); z-index: 60; }
 
+        /* UI 元件層：確保 UI 永遠可點擊 */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-        #log-toggle { position: absolute; right: 25px; top: 25px; width: 30px; height: 30px; background: rgba(0,0,0,0.2); border-radius: 50%; cursor: pointer; pointer-events: auto; z-index: 200; border: 1px solid rgba(255,255,255,0.2); }
+        #log-toggle { position: absolute; right: 20px; top: 20px; width: 28px; height: 28px; background: rgba(0,0,0,0.15); border-radius: 50%; cursor: pointer; pointer-events: auto; z-index: 200; }
 
-        #audio-btns { position: absolute; left: 20px; bottom: 110px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-        .btn { width: 48px; height: 48px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #8B4513; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        /* 音樂控制區 */
+        #audio-btns { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
+        .btn { width: 44px; height: 44px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #8B4513; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
-        #nav-btns { position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: center; gap: 12px; pointer-events: auto; }
-        .nav-btn { padding: 10px 22px; background: rgba(139, 69, 19, 0.85); color: white; border-radius: 25px; font-size: 15px; border: none; cursor: pointer; }
+        /* 選單按鈕區：稍微往上提，避免跟輸入框太近 */
+        #nav-btns { position: absolute; bottom: 100px; width: 100%; display: flex; justify-content: center; gap: 10px; pointer-events: auto; }
+        .nav-btn { padding: 8px 18px; background: rgba(139, 69, 19, 0.85); color: white; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; }
         
-        #target-info { position: absolute; right: 20px; bottom: 20px; text-align: right; pointer-events: auto; color: #555; font-size: 13px; background: rgba(255, 255, 255, 0.6); padding: 10px; border-radius: 10px; }
-        #target-input { background: transparent; border: none; border-bottom: 2px solid #8B4513; width: 70px; color: #8B4513; font-weight: bold; text-align: center; outline: none; }
+        /* 目標資訊區：更精簡且固定位置 */
+        #target-info { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 220px; text-align: center; pointer-events: auto; color: #555; font-size: 12px; 
+            background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        #target-input { background: transparent; border: none; border-bottom: 2px solid #8B4513; width: 60px; color: #8B4513; font-weight: bold; text-align: center; outline: none; font-size: 14px; margin: 0 5px; }
 
+        /* 紀錄面板 */
         #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: white; z-index: 2000; transition: right 0.3s ease-out; padding: 25px; overflow-y: auto; pointer-events: auto; }
         #log-panel.active { right: 0; }
-        .history-item { padding: 12px; border-bottom: 1px solid #eee; color: #333; font-size: 15px; display: flex; justify-content: space-between; }
+        .history-item { padding: 12px; border-bottom: 1px solid #eee; color: #333; font-size: 14px; display: flex; justify-content: space-between; }
 
-        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; width: 0%; z-index: 500; pointer-events: none; }
-        #progress-bar.active { background: #FF4500; transition: width 0.8s linear; width: 100% !important; }
+        #progress-bar { position: absolute; top: 0; left: 0; height: 5px; width: 0%; z-index: 500; pointer-events: none; }
+        #progress-bar.active { background: #FF4500; transition: width 3.5s linear; width: 100% !important; }
     </style>
 </head>
 <body>
     <div id="progress-bar"></div>
 
     <div id="p1" class="content-area active"><div id="text-p1" class="movable">南無本師大自在王佛</div></div>
-    <div id="p2" class="content-area"><img src="buddha.png" id="buddha-img" class="movable"></div>
+    <div id="p2" class="content-area"><img src="1000010292.png" id="buddha-img" class="movable"></div>
     <div id="p3" class="content-area">
         <div id="scripture-p3" class="movable">
             <div class="scripture-header">大自在王佛讚頌</div>
@@ -65,8 +78,8 @@
     <div id="ui-layer">
         <div id="log-toggle" onclick="openLog()"></div>
         <div id="audio-btns">
-            <div class="btn" onclick="actAudio('play')"><div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:15px solid #8B4513;margin-left:5px;"></div></div>
-            <div class="btn" onclick="actAudio('pause')"><div style="width:15px;height:18px;border-left:5px solid #8B4513;border-right:5px solid #8B4513;"></div></div>
+            <div class="btn" onclick="actAudio('play')"><div style="width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:12px solid #8B4513;margin-left:4px;"></div></div>
+            <div class="btn" onclick="actAudio('pause')"><div style="width:12px;height:14px;border-left:4px solid #8B4513;border-right:4px solid #8B4513;"></div></div>
         </div>
         <div id="nav-btns">
             <button class="nav-btn" onclick="goPage(1)">九字禪</button>
@@ -74,8 +87,8 @@
             <button class="nav-btn" onclick="goPage(3)">讚頌</button>
         </div>
         <div id="target-info">
-            目標: <input type="number" id="target-input" placeholder="設定" oninput="updateUI()">
-            <div id="est-time" style="margin-top:5px;">預計: --/-- --:--</div>
+            目標:<input type="number" id="target-input" placeholder="設定" oninput="updateUI()">次
+            <div id="est-time" style="margin-top:5px; color:#888;">預計: --/-- --:--</div>
         </div>
     </div>
 
@@ -112,7 +125,7 @@
         function renderHistory() {
             document.getElementById('log-content').innerHTML = history.length === 0 ? 
                 "<p style='color:#999; text-align:center; margin-top:50px;'>尚無紀錄</p>" : 
-                history.map(item => `<div class="history-item"><b>${item.count} 次</b><span style="font-size:12px; color:#999;">${item.time}</span></div>`).join('');
+                history.map(item => `<div class="history-item"><b>${item.count} 次</b><span>${item.time}</span></div>`).join('');
         }
         function clearHistory() { if(confirm("確定刪除所有紀錄？")) { history = []; localStorage.setItem('myHistory', "[]"); renderHistory(); } }
 
@@ -126,8 +139,12 @@
             } else { document.getElementById('est-time').innerText = "預計: --/-- --:--"; }
         }
 
+        // 鍵盤監聽優化
         document.addEventListener('keydown', (e) => {
-            if(isInputFocus) return;
+            if(isInputFocus) {
+                if(e.key === 'Enter') tInput.blur(); // Enter 鍵自動釋放焦點
+                return;
+            }
             if(e.code === 'Space') { e.preventDefault(); count++; updateUI(); }
             if(e.key === '1') goPage(1); if(e.key === '2') goPage(2); if(e.key === '3') goPage(3);
         });
@@ -149,21 +166,20 @@
         let startT, holdT, visualT, lastX, lastY, startD, isAdjusting = false, touchMoved = false, targetObj = 'bg';
         let isMouseDown = false;
 
-        // 通用位置判斷
         function getTarget(x, y) {
             const el = document.getElementById('counter-movable').getBoundingClientRect();
-            return (x > el.left - 30 && x < el.right + 30 && y > el.top - 30 && y < el.bottom + 30) ? 'num' : 'bg';
+            return (x > el.left - 20 && x < el.right + 20 && y > el.top - 20 && y < el.bottom + 20) ? 'num' : 'bg';
         }
 
-        // 滑鼠事件 (電腦版拖曳核心)
         layer.addEventListener('mousedown', (e) => {
             if (e.pointerType === 'touch') return;
-            if(e.button === 2) { if(confirm("將當前次數存入紀錄並歸零？")) performReset(); return; }
+            // 點擊空白處自動讓輸入框失去焦點
+            if(isInputFocus) { tInput.blur(); }
+            
+            if(e.button === 2) { if(confirm("紀錄並歸零？")) performReset(); return; }
             if(e.button !== 0) return;
 
-            isMouseDown = true;
-            startT = Date.now();
-            touchMoved = false;
+            isMouseDown = true; startT = Date.now(); touchMoved = false;
             lastX = e.clientX; lastY = e.clientY;
             targetObj = getTarget(e.clientX, e.clientY);
         });
@@ -181,16 +197,15 @@
             }
         });
 
-        window.addEventListener('mouseup', (e) => {
+        window.addEventListener('mouseup', () => {
             if(!isMouseDown) return;
             isMouseDown = false;
             if(!touchMoved && (Date.now() - startT < 300)) { count++; updateUI(); }
         });
 
-        // 觸控事件 (手機版)
         layer.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startT = Date.now(); touchMoved = false;
+            if(isInputFocus) tInput.blur();
+            e.preventDefault(); startT = Date.now(); touchMoved = false;
             const t = e.touches[0];
             targetObj = getTarget(t.clientX, t.clientY);
 
@@ -198,8 +213,7 @@
                 isAdjusting = true;
                 startD = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             } else {
-                lastX = t.pageX; lastY = t.pageY;
-                isAdjusting = false;
+                lastX = t.pageX; lastY = t.pageY; isAdjusting = false;
                 holdT = setTimeout(() => { if(!touchMoved && confirm("歸零？")) performReset(); }, 3500);
                 visualT = setTimeout(() => { if(!touchMoved) document.getElementById('progress-bar').classList.add('active'); }, 500);
             }
