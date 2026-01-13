@@ -3,57 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>九字禪計數器 v7.2</title>
+    <title>九字禪計數器 v7.5</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
             overflow: hidden; background-color: #F5F5DC; 
             font-family: sans-serif; user-select: none; touch-action: none;
-            position: fixed; /* 鎖定版面防止跳動 */
+            position: fixed;
         }
         
         #global-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: transparent; cursor: pointer; }
 
-        /* 內容層 */
         .content-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 5; overflow: hidden; }
         .content-area.active { display: flex; }
 
         .movable { will-change: transform; pointer-events: none; position: absolute; }
-        #text-p1 { color: #8B4513; font-family: "標楷體", serif; font-size: 32px; font-weight: 900; white-space: nowrap; }
+        #text-p1 { color: #8B4513; font-family: "標楷體", serif; font-size: 38px; font-weight: 900; white-space: nowrap; }
         #buddha-img { max-height: 80vh; }
-        #scripture-p3 { padding: 30px; text-align: center; color: #8B4513; width: 350px; }
-        .scripture-header { font-size: 26px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #8B4513; display: inline-block; }
-        .scripture-content { font-size: 19px; line-height: 1.6; text-align: justify; }
+        #scripture-p3 { padding: 30px; text-align: center; color: #8B4513; width: 380px; }
+        .scripture-header { font-size: 28px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #8B4513; display: inline-block; }
+        .scripture-content { font-size: 20px; line-height: 1.6; text-align: justify; }
 
-        /* 數字層：獨立感應區 */
-        #counter-movable { 
-            color: #00008B; font-size: 90px; font-weight: bold; 
-            text-shadow: 2px 2px 4px rgba(255,255,255,0.5); z-index: 60; 
-            padding: 10px 20px; border-radius: 15px;
-        }
+        #counter-movable { color: #00008B; font-size: 100px; font-weight: bold; text-shadow: 2px 2px 4px rgba(255,255,255,0.4); z-index: 60; }
 
-        /* UI 元件層 */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
         
-        #audio-btns { position: absolute; left: 15px; bottom: 100px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-        .btn { width: 44px; height: 44px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #8B4513; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
-        #nav-btns { position: absolute; bottom: 75px; width: 100%; display: flex; justify-content: center; gap: 10px; pointer-events: auto; }
-        .nav-btn { padding: 8px 18px; background: rgba(139, 69, 19, 0.85); color: white; border-radius: 20px; font-size: 14px; border: none; }
-        
-        /* 目標資訊：解決鍵盤遮擋，改為較高位置 */
-        #target-info { 
-            position: absolute; right: 15px; bottom: 15px; 
-            text-align: right; pointer-events: auto; color: #8b8b7a; font-size: 12px; 
-            background: rgba(245, 245, 220, 0.8); padding: 8px; border-radius: 8px;
-            z-index: 110;
-        }
-        #target-input { background: transparent; border: none; border-bottom: 1px solid #8B4513; width: 60px; color: #8B4513; font-weight: bold; text-align: center; outline: none; }
+        /* 紀錄點擊圓圈 */
+        #log-toggle { position: absolute; right: 25px; top: 25px; width: 30px; height: 30px; background: rgba(0,0,0,0.2); border-radius: 50%; cursor: pointer; pointer-events: auto; z-index: 200; border: 1px solid rgba(255,255,255,0.2); }
 
-        #log-toggle { position: absolute; right: 20px; top: 20px; width: 25px; height: 25px; background: rgba(112, 128, 144, 0.4); border-radius: 50%; cursor: pointer; pointer-events: auto; }
+        #audio-btns { position: absolute; left: 20px; bottom: 110px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
+        .btn { width: 48px; height: 48px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #8B4513; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        
+        #nav-btns { position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: center; gap: 12px; pointer-events: auto; }
+        .nav-btn { padding: 10px 22px; background: rgba(139, 69, 19, 0.85); color: white; border-radius: 25px; font-size: 15px; border: none; cursor: pointer; }
+        
+        #target-info { position: absolute; right: 20px; bottom: 20px; text-align: right; pointer-events: auto; color: #555; font-size: 13px; background: rgba(255, 255, 255, 0.6); padding: 10px; border-radius: 10px; }
+        #target-input { background: transparent; border: none; border-bottom: 2px solid #8B4513; width: 70px; color: #8B4513; font-weight: bold; text-align: center; outline: none; }
 
-        #progress-bar { position: absolute; top: 0; left: 0; height: 5px; width: 0%; z-index: 500; pointer-events: none; }
+        /* 紀錄面板 */
+        #log-panel { position: absolute; top: 0; right: -100%; width: 100%; height: 100%; background: white; z-index: 2000; transition: right 0.3s ease-out; padding: 25px; overflow-y: auto; pointer-events: auto; }
+        #log-panel.active { right: 0; }
+        .history-item { padding: 12px; border-bottom: 1px solid #eee; color: #333; font-size: 15px; display: flex; justify-content: space-between; }
+
+        #progress-bar { position: absolute; top: 0; left: 0; height: 6px; width: 0%; z-index: 500; pointer-events: none; }
         #progress-bar.active { background: #FF4500; transition: width 0.8s linear; width: 100% !important; }
     </style>
 </head>
@@ -75,8 +68,8 @@
     <div id="ui-layer">
         <div id="log-toggle" onclick="openLog()"></div>
         <div id="audio-btns">
-            <div class="btn" onclick="actAudio('play')"><div style="width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 12px solid #8B4513; margin-left: 4px;"></div></div>
-            <div class="btn" onclick="actAudio('pause')"><div style="width: 12px; height: 14px; border-left: 4px solid #8B4513; border-right: 4px solid #8B4513;"></div></div>
+            <div class="btn" onclick="actAudio('play')"><div style="width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid #8B4513; margin-left: 5px;"></div></div>
+            <div class="btn" onclick="actAudio('pause')"><div style="width: 15px; height: 18px; border-left: 5px solid #8B4513; border-right: 5px solid #8B4513;"></div></div>
         </div>
         <div id="nav-btns">
             <button class="nav-btn" onclick="goPage(1)">九字禪</button>
@@ -84,30 +77,51 @@
             <button class="nav-btn" onclick="goPage(3)">讚頌</button>
         </div>
         <div id="target-info">
-            目標: <input type="number" id="target-input" placeholder="設定" onfocus="this.placeholder=''" onblur="this.placeholder='設定'" oninput="updateUI()">
-            <div id="est-time">預計: --/-- --:--</div>
+            目標: <input type="number" id="target-input" placeholder="設定" oninput="updateUI()">
+            <div id="est-time" style="margin-top:5px;">預計: --/-- --:--</div>
         </div>
+    </div>
+
+    <div id="log-panel">
+        <div onclick="closeLog()" style="text-align:right; font-size:32px; cursor:pointer; color:#8B4513;">✕</div>
+        <h3 style="color:#8B4513; border-bottom:2px solid #8B4513; padding-bottom:10px;">結算紀錄</h3>
+        <div id="log-content"></div>
+        <button onclick="clearHistory()" style="width:100%; margin-top:30px; padding:15px; background:#ff4444; color:white; border:none; border-radius:10px; cursor:pointer; font-size:16px;">清空所有紀錄</button>
     </div>
 
     <audio id="buddhaAudio" loop><source src="buddha_chant.mp3" type="audio/mpeg"></audio>
 
     <script>
         let count = parseInt(localStorage.getItem('myCounter')) || 0;
-        let activePage = 1;
+        let history = JSON.parse(localStorage.getItem('myHistory')) || [];
+        let activePage = 1, isInputFocus = false;
         let state = {
             num: { x: 0, y: 150, s: 1 },
-            p1:  { x: 0, y: -150, s: 1 },
-            p2:  { x: 0, y: -50, s: 1 },
-            p3:  { x: 0, y: -100, s: 1 }
+            p1:  { x: 0, y: -150, s: 1 }, p2: { x: 0, y: -50, s: 1 }, p3: { x: 0, y: -100, s: 1 }
         };
 
-        // 解決鍵盤推擠問題
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                document.body.style.height = window.visualViewport.height + 'px';
-                window.scrollTo(0, 0);
-            });
+        // 核心：紀錄與歸零邏輯
+        function performReset() {
+            if (count > 0) {
+                // 歸零前存入歷史
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
+                history.unshift({ count: count, time: timeStr });
+                localStorage.setItem('myHistory', JSON.stringify(history));
+            }
+            count = 0;
+            updateUI();
         }
+
+        function openLog() { renderHistory(); document.getElementById('log-panel').classList.add('active'); }
+        function closeLog() { document.getElementById('log-panel').classList.remove('active'); }
+        function renderHistory() {
+            const container = document.getElementById('log-content');
+            container.innerHTML = history.length === 0 ? 
+                "<p style='color:#999; text-align:center; margin-top:50px;'>尚無結算紀錄</p>" : 
+                history.map(item => `<div class="history-item"><span><b>${item.count} 次</b></span><span style="font-size:12px; color:#999;">${item.time}</span></div>`).join('');
+        }
+        function clearHistory() { if(confirm("確定刪除所有紀錄？")) { history = []; localStorage.setItem('myHistory', "[]"); renderHistory(); } }
 
         function updateUI() {
             document.getElementById('counter-movable').innerText = count;
@@ -119,6 +133,16 @@
             } else { document.getElementById('est-time').innerText = "預計: --/-- --:--"; }
         }
 
+        // 鍵盤與輸入框處理
+        document.addEventListener('keydown', (e) => {
+            if(isInputFocus) return;
+            if(e.code === 'Space') { e.preventDefault(); count++; updateUI(); }
+            if(e.key === '1') goPage(1); if(e.key === '2') goPage(2); if(e.key === '3') goPage(3);
+        });
+        const tInput = document.getElementById('target-input');
+        tInput.addEventListener('focus', () => isInputFocus = true);
+        tInput.addEventListener('blur', () => isInputFocus = false);
+
         function goPage(n) {
             activePage = n;
             document.querySelectorAll('.content-area').forEach(e => e.classList.remove('active'));
@@ -126,24 +150,24 @@
             applyTransforms();
         }
 
-        function actAudio(a) {
-            const ad = document.getElementById('buddhaAudio');
-            if(a==='play') ad.play(); else ad.pause();
-        }
+        function actAudio(a) { const ad = document.getElementById('buddhaAudio'); if(a==='play') ad.play(); else ad.pause(); }
 
         const layer = document.getElementById('global-layer');
-        let startT, lastX, lastY, startD, isAdjusting = false, touchMoved = false, targetObj = 'bg';
+        let startT, holdT, visualT, lastX, lastY, startD, isAdjusting = false, touchMoved = false, targetObj = 'bg';
+
+        layer.addEventListener('mousedown', (e) => {
+            if (e.pointerType === 'touch') return;
+            if(e.button === 0) { count++; updateUI(); }
+            else if(e.button === 2) { if(confirm("將當前次數存入紀錄並歸零？")) { performReset(); } }
+        });
 
         layer.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            startT = Date.now();
-            touchMoved = false;
-
-            // 判斷觸碰點是否在數字附近 (獨立縮放邏輯)
+            startT = Date.now(); touchMoved = false;
             const touch = e.touches[0];
             const numEl = document.getElementById('counter-movable').getBoundingClientRect();
-            const isNearNum = (touch.clientX > numEl.left - 50 && touch.clientX < numEl.right + 50 &&
-                               touch.clientY > numEl.top - 50 && touch.clientY < numEl.bottom + 50);
+            const isNearNum = (touch.clientX > numEl.left - 40 && touch.clientX < numEl.right + 40 &&
+                               touch.clientY > numEl.top - 40 && touch.clientY < numEl.bottom + 40);
             targetObj = isNearNum ? 'num' : 'bg';
 
             if(e.touches.length >= 2) {
@@ -152,6 +176,9 @@
             } else {
                 lastX = touch.pageX; lastY = touch.pageY;
                 isAdjusting = false;
+                // 手機長按歸零進度條
+                holdT = setTimeout(() => { if(!touchMoved && confirm("將當前次數存入紀錄並歸零？")) performReset(); }, 3500);
+                visualT = setTimeout(() => { if(!touchMoved) document.getElementById('progress-bar').classList.add('active'); }, 500);
             }
         }, {passive: false});
 
@@ -160,36 +187,27 @@
                 isAdjusting = true;
                 const d = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 const ratio = d / startD;
-                
-                // 根據起始判斷決定縮放對象
-                if(targetObj === 'num') {
-                    state.num.s *= ratio;
-                } else {
-                    state['p'+activePage].s *= ratio;
-                }
-                startD = d;
-                applyTransforms();
+                if(targetObj === 'num') state.num.s *= ratio; else state['p'+activePage].s *= ratio;
+                startD = d; applyTransforms();
             } else if(e.touches.length === 1 && !isAdjusting) {
                 const dx = e.touches[0].pageX - lastX;
                 const dy = e.touches[0].pageY - lastY;
                 if(Math.abs(dx) > 10 || Math.abs(dy) > 10) {
                     touchMoved = true;
-                    if(targetObj === 'num') {
-                        state.num.x += dx; state.num.y += dy;
-                    } else {
-                        state['p'+activePage].x += dx; state['p'+activePage].y += dy;
-                    }
+                    clearTimeout(holdT); clearTimeout(visualT); document.getElementById('progress-bar').classList.remove('active');
+                    if(targetObj === 'num') { state.num.x += dx; state.num.y += dy; }
+                    else { state['p'+activePage].x += dx; state['p'+activePage].y += dy; }
                     lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
                     applyTransforms();
                 }
             }
+            if(isAdjusting) { clearTimeout(holdT); clearTimeout(visualT); document.getElementById('progress-bar').classList.remove('active'); }
         });
 
         layer.addEventListener('touchend', (e) => {
             if(e.touches.length === 0) {
-                if(!isAdjusting && !touchMoved && (Date.now() - startT < 300)) {
-                    count++; updateUI();
-                }
+                if(!isAdjusting && !touchMoved && (Date.now() - startT < 300)) { count++; updateUI(); }
+                clearTimeout(holdT); clearTimeout(visualT); document.getElementById('progress-bar').classList.remove('active');
                 isAdjusting = false; touchMoved = false;
             }
         });
@@ -202,6 +220,7 @@
         }
 
         document.getElementById('target-input').value = localStorage.getItem('myTarget') || "";
+        document.addEventListener('contextmenu', e => e.preventDefault());
         updateUI(); applyTransforms();
     </script>
 </body>
