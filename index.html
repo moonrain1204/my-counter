@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>九字禪計數器 v8.1</title>
+    <title>九字禪計數器 v8.2</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { 
@@ -70,7 +70,8 @@
     <div id="global-layer"></div>
 
     <div id="ui-layer">
-        <div id="sync-btn" onclick="syncToPracticeApp()" title="同步數值到進度表"></div>
+        <div id="sync-btn" onclick="syncToPracticeApp()" title="同步並歸零"></div>
+        
         <div id="log-toggle" onclick="openLog()"></div>
         <div id="audio-btns">
             <div class="btn" onclick="actAudio('play')"><div style="width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:12px solid #8B4513;margin-left:4px;"></div></div>
@@ -105,14 +106,18 @@
             p1:  { x: 0, y: -150, s: 1 }, p2: { x: 0, y: -50, s: 1 }, p3: { x: 0, y: -100, s: 1 }
         };
 
-        // 同步功能：透過 URL 參數傳送數值
+        // 更新後的同步功能
         function syncToPracticeApp() {
             if(count === 0) { alert("目前數值為 0，無需儲存"); return; }
             if(confirm(`確定將 ${count} 次儲存到練習進度表並歸零計數器嗎？`)) {
-                // 將數值附加在網址後方
+                // 傳遞參數：count=數值
                 const targetUrl = `https://moonrain1204.github.io/Practice-schedule/?count=${count}`;
-                window.location.href = targetUrl; // 直接跳轉
-                performReset(); 
+                
+                // 執行歸零與紀錄
+                performReset();
+                
+                // 跳轉到進度表
+                window.location.href = targetUrl;
             }
         }
 
@@ -123,7 +128,8 @@
                 history.unshift({ count: count, time: timeStr });
                 localStorage.setItem('myHistory', JSON.stringify(history));
             }
-            count = 0; updateUI();
+            count = 0; 
+            updateUI();
         }
 
         function openLog() { renderHistory(); document.getElementById('log-panel').classList.add('active'); }
